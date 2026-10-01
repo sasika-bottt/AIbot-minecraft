@@ -1,0 +1,49 @@
+'use strict';
+
+var forgeHandshake = require('./forgeHandshake.cjs');
+var forgeHandshake2 = require('./forgeHandshake2.cjs')
+var forgeHandshake3 = require('./forgeHandshake3.cjs')
+
+module.exports = function (client, options) {
+  if (!client.autoVersionHooks) client.autoVersionHooks = [];
+
+  client.autoVersionHooks.push(function (response, client, options) {
+
+    if (!response.modinfo || response.modinfo.type !== 'FML') {
+      return; // not ours
+    }
+
+    // Use the list of Forge mods from the server ping, so client will match server
+    var forgeMods = response.modinfo.modList;
+    console.log('Using forgeMods:', forgeMods);
+
+    // Install the FML|HS plugin with the given mods
+    forgeHandshake(client, { forgeMods: forgeMods });
+  });
+
+  client.autoVersionHooks.push(function (response, client, options) {
+    if (!response.forgeData || response.forgeData.fmlNetworkVersion !== 2) {
+      return; // not ours
+    }
+
+    // Use the list of Forge mods from the server ping, so client will match server
+    var forgeMods = response.forgeData.mods;
+    console.log('Using forgeMods:', forgeMods);
+
+    // Install the FML2 plugin with the given mods
+    forgeHandshake2(client, { forgeMods });
+  });
+
+  client.autoVersionHooks.push(function (response, client, options) {
+    if (!response.forgeData || !response.forgeData.d) {
+      return // not ours
+    }
+
+    // Use the list of Forge mods from the server ping, so client will match server
+    var forgeMods = response.forgeData.mods;
+    console.log('Using forgeMods:', forgeMods);
+
+    // Install the FML3 plugin with the given mods
+    forgeHandshake3(client, { forgeMods });
+  });
+}

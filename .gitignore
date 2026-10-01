@@ -1,0 +1,17 @@
+# 密钥
+keys.json
+*.key
+*_token*
+
+# 运行时数据（大文件 / 个人记忆）
+node_modules/
+whisper_models/
+bots/
+bots_data/
+world/
+libraries/
+logs/
+crash-reports/
+
+# 个人路径产物
+*.pow
