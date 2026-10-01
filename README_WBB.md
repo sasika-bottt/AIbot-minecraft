@@ -84,7 +84,7 @@ node main.js
 - [x] 工作日志已复查，无 API Key / 访问密钥
 - [ ] 大文件不入库：whisper_models/（460MB）、node_modules/、服务端 world/ 与 libraries/ 均未复制，发布时保持排除
 - [ ] 公开仓库前把个人路径（D:/AI/...、E:/w我的世界/...）按需泛化
-- [ ] 补充开源协议：上游 Mindcraft 为 MIT，本仓库改动建议沿用 MIT 并注明上游
+- [x] 补充开源协议：LICENSE 已添加（MIT 双署名：保留上游 Kolby Nottingham 版权声明 + 本仓库改动 sasika-bottt）
 
 ## 致谢
 
