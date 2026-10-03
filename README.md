@@ -32,9 +32,9 @@ mindcraft/          Mindcraft 主程序（含全部魔改）
   patches/                  上游自带补丁
 server/             Forge 服务端配置样例
   server.properties         offline-mode / 端口 25565
-  voicechat-server.properties   voice_host=<穿透域名>:<UDP远程端口>（外网语音必改）
+  voicechat-server.properties   Simple Voice Chat 服务端配置（外网联机时填 voice_host）
+  user_jvm_args.txt         服务端 JVM 参数样例
   mods_list.txt             服务端 mod 清单
-  modrinth.index.json       整合包定义
 assets/skin/        自绘皮肤与生成脚本（见「形象」一节）
 docs/logs/          全程工作日志（含每个坑的根因分析）
 ```
@@ -46,22 +46,31 @@ docs/logs/          全程工作日志（含每个坑的根因分析）
 - Forge 1.20.1 服务端（推荐 47.4.x）
 - DeepSeek API Key
 
-### 1. Mindcraft 端
+### 1. Mindcraft 端：装依赖
 ```bash
-# 1) 按 mindcraft 上游 README 安装依赖，然后：
-npm install mineflayer-simplevoice opusscript edge-tts --ignore-scripts
-# 2) pip install faster-whisper "av==14.2.0" edge-tts（Python venv 内，走清华源更快）
-# 3) keys.json 填入 DEEPSEEK_API_KEY（参考 keys.example.json）
-# 4) settings.js 关键项：
-#    "minecraft_version": "auto", "port": 25565, "forge_server": true
-# 5) opusWrapper.cjs 放到 node_modules/mineflayer-simplevoice/lib/ 下，
-#    并把该目录 VoiceChatClient.js 的 require("@discordjs/opus") 改为 require("./opusWrapper.cjs")
-# 6) 语音后端（voice.js 默认取 PATH 中的 edge-tts / python，可用环境变量覆盖）：
-#    EDGE_TTS_EXE=/path/to/edge-tts   PYTHON_EXE=/path/to/python
-# 7) 启动 whisper 服务 + TTS 常驻进程 + 主程序：
-python stt_server.py &
-python tts_worker.py &
-node main.js
+cd mindcraft
+npm install                    # 会自动跑 patch-package 应用 patches/ 下的补丁
+npm install opusscript --ignore-scripts   # 语音用（替代 @discordjs/opus）
+# 语音识别 / 合成（可选，建议在 Python venv 内，走清华源更快）
+pip install faster-whisper "av==14.2.0" edge-tts
+```
+
+### 2. 配置
+- **API Key**：复制 `keys.example.json` 为 `keys.json`，填入 `DEEPSEEK_API_KEY`。
+- **`settings.js` 关键项**：
+  - `"minecraft_version": "1.20.1"`
+  - `"forge_server": true`（连 Forge 服务端走 FML3 握手；**原版服务器必须保持 false**）
+  - `"host": "<服务器IP>"`、`"port": 25565`、`"auth": "offline"`
+  - `"forge_mods": []`（一般不填；如服务端校验严格，需与 `server/mods_list.txt` 一致）
+- **语音后端**：`voice.js` 默认取 `PATH` 中的 `edge-tts` / `python` / `ffmpeg`，可用环境变量覆盖：
+  `EDGE_TTS_EXE`、`PYTHON_EXE`、`FFMPEG_PATH`。
+- **opus 兼容层**：把 `opusWrapper.cjs` 放到 `node_modules/mineflayer-simplevoice/lib/` 下，并把该目录 `VoiceChatClient.js` 里的 `require("@discordjs/opus")` 改为 `require("./opusWrapper.cjs")`。
+
+### 3. 启动
+```bash
+python stt_server.py &    # 可选：常驻语音识别
+python tts_worker.py &    # 可选：常驻语音合成（省冷启动）
+node main.js              # 主程序；启动后浏览器自动打开控制台 localhost:8080
 ```
 
 ### 2. 服务端
@@ -95,14 +104,15 @@ node main.js
 8. **掉线不会自动重连**，停服后要重启 Mindcraft 主程序。
 9. **改 mode 默认值要改两处**：`modes.js` 里的 `on` 只是初始默认，启动时会被 `wb.json` 的 `modes` 字段覆盖，两处都改才生效。
 
-## 开源前检查清单
+## 开源前检查清单（已全部完成）
 
-- [x] 密钥不进仓库：keys.json 已排除，仅保留 keys.example.json（.gitignore 兜底）
-- [x] 工作日志已复查，无 API Key / 访问密钥
-- [x] 大文件不入库：whisper_models/（460MB）、node_modules/、服务端 world/ 与 libraries/ 均未复制（.gitignore 兜底）
-- [x] 个人路径已泛化：`voice.js` 的外部可执行文件改为环境变量 / PATH（2026-10-03）
-- [x] 补充开源协议：LICENSE 已添加（MIT 双署名：保留上游 Kolby Nottingham 版权声明 + 本仓库改动 sasika-bottt）
-- [ ] 第三方皮肤未入库（见「形象」一节版权说明）
+- [x] 密钥不进仓库：`keys.json` 已排除，仅保留 `keys.example.json`（`.gitignore` 兜底）
+- [x] **无隐私信息**：全仓库无 API Key / 访问密钥 / 真实服务器地址 / 个人绝对路径 / 游戏 ID（2026-10-03 全量复查）
+- [x] 大文件不入库：`whisper_models/`（460MB）、`node_modules/`、服务端 `world/` 与 `libraries/` 均未复制（`.gitignore` 兜底）
+- [x] **个人路径已泛化**：`voice.js` 的外部可执行文件改为「环境变量 → PATH → 按平台」；皮肤脚本输出路径改为当前目录；服务端样例配置里的穿透域名改为占位
+- [x] 示例配置齐全：`keys.example.json` + `server/` 目录样例可直接参照
+- [x] 补充开源协议：`LICENSE`（MIT 双署名：保留上游 Kolby Nottingham 版权声明 + 本仓库改动 sasika-bottt）
+- [x] 第三方皮肤未入库（见「形象」一节版权说明）
 
 ## 致谢
 

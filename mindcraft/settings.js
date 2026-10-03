@@ -15,7 +15,7 @@ const settings = {
     "mindserver_port": 8080,
     "auto_open_ui": true, // opens UI in browser on startup
     
-    "base_profile": "survival", // survival, assistant, creative, or god_mode（2026-10-02 主人令：改生存模式）
+    "base_profile": "survival", // survival, assistant, creative, or god_mode（本项目使用生存模式）
     "profiles": [
         "./wb.json",
     ],
@@ -34,7 +34,7 @@ const settings = {
     "language": "en", // set to en to bypass google translate (bot already speaks Chinese via LLM persona)
     "render_bot_view": false, // show bot's view in browser at localhost:3000, 3001...
 
-    "allow_insecure_coding": true, // allows newAction command and model can write/run code on your computer. enable at own risk（为批量建造开启，2026-10-01）
+    "allow_insecure_coding": true, // allows newAction command and model can write/run code on your computer. enable at own risk（本项目为批量建造开启）
     "allow_vision": false, // allows vision model to interpret screenshots as inputs
     "blocked_actions" : ["!checkBlueprint", "!checkBlueprintLevel", "!getBlueprint", "!getBlueprintLevel", "!attackPlayer", "!goToRememberedPlace", "!rememberHere", "!viewChest", "!clearFurnace"] , // !goal 已在 actions.js 中硬禁用（unblockable，blocked_actions 无效）；!newAction 已解封用于批量建造
     "code_timeout_mins": -1, // minutes code is allowed to run. -1 for no timeout

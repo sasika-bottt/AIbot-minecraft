@@ -10,7 +10,8 @@ bots/
 bots_data/
 world/
 libraries/
-logs/
+# 只忽略根目录的运行时日志；docs/logs/ 是项目文档，必须入库（故用 /logs/ 而非 logs/）
+/logs/
 crash-reports/
 
 # 个人路径产物
