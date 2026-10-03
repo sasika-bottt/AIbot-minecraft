@@ -15,7 +15,7 @@ const settings = {
     "mindserver_port": 8080,
     "auto_open_ui": true, // opens UI in browser on startup
     
-    "base_profile": "assistant", // survival, assistant, creative, or god_mode
+    "base_profile": "survival", // survival, assistant, creative, or god_mode（2026-10-02 主人令：改生存模式）
     "profiles": [
         "./wb.json",
     ],
@@ -34,14 +34,14 @@ const settings = {
     "language": "en", // set to en to bypass google translate (bot already speaks Chinese via LLM persona)
     "render_bot_view": false, // show bot's view in browser at localhost:3000, 3001...
 
-    "allow_insecure_coding": false, // allows newAction command and model can write/run code on your computer. enable at own risk
+    "allow_insecure_coding": true, // allows newAction command and model can write/run code on your computer. enable at own risk（为批量建造开启，2026-10-01）
     "allow_vision": false, // allows vision model to interpret screenshots as inputs
-    "blocked_actions" : ["!checkBlueprint", "!checkBlueprintLevel", "!getBlueprint", "!getBlueprintLevel"] , // commands to disable and remove from docs. Ex: ["!setMode"]
+    "blocked_actions" : ["!checkBlueprint", "!checkBlueprintLevel", "!getBlueprint", "!getBlueprintLevel", "!attackPlayer", "!goToRememberedPlace", "!rememberHere", "!viewChest", "!clearFurnace"] , // !goal 已在 actions.js 中硬禁用（unblockable，blocked_actions 无效）；!newAction 已解封用于批量建造
     "code_timeout_mins": -1, // minutes code is allowed to run. -1 for no timeout
     "relevant_docs_count": 5, // number of relevant code function docs to select for prompting. -1 for all
 
-    "max_messages": 8, // max number of messages to keep in context
-    "num_examples": 2, // number of examples to give to the model
+    "max_messages": 6, // max number of messages to keep in context
+    "num_examples": 1, // number of examples to give to the model
     "max_commands": -1, // max number of commands that can be used in consecutive responses. -1 for no limit
     "show_command_syntax": "full", // "full", "shortened", or "none"
     "narrate_behavior": true, // chat simple automatic actions ('Picking up item!')

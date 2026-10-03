@@ -100,6 +100,22 @@ export const actionsList = [
         })
     },
     {
+        name: '!tpToPlayer',
+        description: 'Instantly teleport yourself to the given player. Use this instead of !goToPlayer when far away or stuck.',
+        params: {
+            'player_name': {type: 'string', description: 'The name of the player to teleport to.'}
+        },
+        perform: runAsAction(async (agent, player_name) => {
+            agent.bot.chat(`/tp ${agent.bot.username} ${player_name}`);
+            await new Promise(r => setTimeout(r, 1000));
+            const p = agent.bot.players[player_name];
+            if (!p || !p.entity) throw new Error(`Teleport failed: cannot see ${player_name}. Are you OP on this server?`);
+            const d = agent.bot.entity.position.distanceTo(p.entity.position);
+            if (d > 10) throw new Error(`Teleport failed: still ${Math.round(d)} blocks away.`);
+            return `Teleported to ${player_name}.`;
+        })
+    },
+    {
         name: '!followPlayer',
         description: 'Endlessly follow the given player.',
         params: {
@@ -367,12 +383,8 @@ export const actionsList = [
             'selfPrompt': { type: 'string', description: 'The goal prompt.' },
         },
         perform: async function (agent, prompt) {
-            if (convoManager.inConversation()) {
-                agent.self_prompter.setPromptPaused(prompt);
-            }
-            else {
-                agent.self_prompter.start(prompt);
-            }
+            // 自主模式已禁用（省 API 费用）：不启动 SelfPrompter，直接拒绝
+            return '自主模式已禁用，无法设定长期目标。请直接下达一次性指令。';
         }
     },
     {

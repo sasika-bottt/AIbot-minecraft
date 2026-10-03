@@ -7,16 +7,21 @@ import { execFile, spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
-const EDGE_TTS_EXE = 'C:/Users/Administrator/.workbuddy/binaries/python/envs/default/Scripts/edge-tts.exe';
-const PYTHON_EXE = 'C:/Users/Administrator/.workbuddy/binaries/python/envs/default/Scripts/python.exe';
-const FFMPEG_EXE = path.join(process.cwd(), 'node_modules', '@ffmpeg-installer', 'win32-x64', 'ffmpeg.exe');
-const TTS_VOICE = 'zh-CN-YunxiNeural'; // 中文男声
-const TTS_RATE = '+10%';
+// 外部可执行文件：优先用环境变量覆盖，未设置则回退 PATH / 平台默认（便于跨机复用）
+const EDGE_TTS_EXE = process.env.EDGE_TTS_EXE || 'edge-tts';
+const PYTHON_EXE = process.env.PYTHON_EXE || (process.platform === 'win32' ? 'python' : 'python3');
+const FFMPEG_DIR = process.platform === 'win32' ? 'win32-x64'
+                 : (process.platform === 'darwin' ? 'darwin-x64' : 'linux-x64');
+const FFMPEG_EXE = process.env.FFMPEG_PATH
+                 || path.join(process.cwd(), 'node_modules', '@ffmpeg-installer', FFMPEG_DIR,
+                              process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg');
+const TTS_VOICE = 'zh-CN-XiaoyiNeural'; // 女声·晓伊（活泼少女音）
+const TTS_RATE = '+20%';
 const MAX_SPEAK_LEN = 200;   // 单次语音最长字符数
 const TTS_DIR = path.join(process.cwd(), 'bots', '_tts');
 const STT_DIR = path.join(process.cwd(), 'bots', '_stt');
 
-const SEGMENT_SILENCE_MS = 1500; // 静音多久算说完一句话
+const SEGMENT_SILENCE_MS = 1000; // 静音多久算说完一句话（1.5s→1.0s 提速响应）
 const MIN_SEGMENT_MS = 600;      // 太短的片段丢弃（噪音）
 const MIN_RMS = 400;             // 音量门限，低于视为静音
 
@@ -32,6 +37,11 @@ let _pyWaiters = new Map(); // id -> resolve
 let _pyId = 0;
 let _sttBusy = false;
 let _sttQueue = [];       // 待识别的 {sender, rawPath}
+let _tts = null;          // tts_worker.py 常驻进程（省冷启动）
+let _ttsReady = false;
+let _ttsBuf = '';
+let _ttsWaiters = new Map(); // id -> resolve
+let _ttsId = 0;
 
 export function cleanForSpeech(text) {
     if (!text) return '';
@@ -64,10 +74,61 @@ export function loadVoice(bot, agent) {
     if (!fs.existsSync(STT_DIR)) fs.mkdirSync(STT_DIR, { recursive: true });
 
     startSttServer();
+    startTtsWorker();
     setupListening();
 }
 
 // ================= TTS（说话） =================
+
+function startTtsWorker() {
+    try {
+        _tts = spawn(PYTHON_EXE, [path.join(process.cwd(), 'tts_worker.py')], {
+            cwd: process.cwd(), windowsHide: true,
+        });
+        _tts.stdout.on('data', (d) => {
+            _ttsBuf += d.toString();
+            let idx;
+            while ((idx = _ttsBuf.indexOf('\n')) >= 0) {
+                const line = _ttsBuf.slice(0, idx).trim();
+                _ttsBuf = _ttsBuf.slice(idx + 1);
+                if (!line) continue;
+                try {
+                    const msg = JSON.parse(line);
+                    const resolve = _ttsWaiters.get(msg.id);
+                    if (resolve) { _ttsWaiters.delete(msg.id); resolve(msg); }
+                } catch (e) {}
+            }
+        });
+        _tts.stderr.on('data', (d) => {
+            const s = d.toString().trim();
+            if (s) console.log('[voice][tts]', s.slice(0, 150));
+        });
+        _tts.on('exit', (code) => {
+            console.log('[voice] tts worker exited', code);
+            _ttsReady = false;
+        });
+        _ttsReady = true;
+        console.log('[voice] tts worker started');
+    } catch (e) {
+        console.log('[voice] tts worker start failed:', e.message);
+    }
+}
+
+/** 常驻 worker 合成一段语音；失败返回 {ok:false} */
+function ttsRequest(text, mp3Path) {
+    return new Promise((resolve) => {
+        if (!_ttsReady || !_tts) return resolve({ ok: false, error: 'tts worker not ready' });
+        const id = ++_ttsId;
+        _ttsWaiters.set(id, resolve);
+        _tts.stdin.write(JSON.stringify({ id, text, out: mp3Path }) + '\n');
+        setTimeout(() => { // 30s 超时兜底
+            if (_ttsWaiters.has(id)) {
+                _ttsWaiters.delete(id);
+                resolve({ ok: false, error: 'tts timeout' });
+            }
+        }, 30000);
+    });
+}
 
 export function speakVoice(bot, text) {
     const clean = cleanForSpeech(text);
@@ -84,12 +145,16 @@ async function _pump() {
             const text = _queue.shift();
             if (!_connected) continue;
             const mp3 = path.join(TTS_DIR, `say_${Date.now()}.mp3`);
-            await new Promise((resolve, reject) => {
-                execFile(EDGE_TTS_EXE, [
-                    '--voice', TTS_VOICE, '--rate=' + TTS_RATE,
-                    '--text', text, '--write-media', mp3,
-                ], { timeout: 30000, windowsHide: true }, (err) => err ? reject(err) : resolve());
-            });
+            // 优先常驻 worker（省 ~1s 冷启动），失败回退一次性 CLI
+            let r = await ttsRequest(text, mp3);
+            if (!r.ok) {
+                await new Promise((resolve, reject) => {
+                    execFile(EDGE_TTS_EXE, [
+                        '--voice', TTS_VOICE, '--rate=' + TTS_RATE,
+                        '--text', text, '--write-media', mp3,
+                    ], { timeout: 30000, windowsHide: true }, (err) => err ? reject(err) : resolve());
+                });
+            }
             await _bot.voicechat.sendAudio(mp3);
             setTimeout(() => { try { fs.unlinkSync(mp3); } catch (e) {} }, 5000);
         }

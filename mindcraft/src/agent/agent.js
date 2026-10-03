@@ -421,6 +421,13 @@ export class Agent {
         // newlines are interpreted as separate chats, which triggers spam filters. replace them with spaces
         message = message.replaceAll('\n', ' ');
 
+        // 游戏内聊天/语音只保留自然语言，过滤掉命令字符串（命令仍照常执行）
+        let chat_message = message
+            .replace(/![a-zA-Z_]+\([^)]*\)/g, ' ')   // 带参数的命令 !cmd(...)
+            .replace(/![a-zA-Z_]+/g, ' ')            // 兜底：裸命令名
+            .replace(/\s+/g, ' ')
+            .trim();
+
         if (settings.only_chat_with.length > 0) {
             for (let username of settings.only_chat_with) {
                 this.bot.whisper(username, message);
@@ -430,9 +437,9 @@ export class Agent {
             if (settings.speak) {
                 speak(to_translate, this.prompter.profile.speak_model);
             }
-            if (settings.chat_ingame) {this.bot.chat(message);}
-            speakVoice(this.bot, message); // 游戏内语音播报回复
-            sendOutputToServer(this.name, message);
+            if (settings.chat_ingame && chat_message.length > 0) {this.bot.chat(chat_message);}
+            if (chat_message.length > 0) speakVoice(this.bot, chat_message); // 游戏内语音播报回复（已去命令）
+            sendOutputToServer(this.name, chat_message.length > 0 ? chat_message : message);
         }
     }
 

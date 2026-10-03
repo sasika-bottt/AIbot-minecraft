@@ -160,6 +160,15 @@ const modes_list = [
         on: true,
         active: false,
         update: async function (agent) {
+            // 只在"被攻击后 10 秒内"才反击，不再主动攻击路过敌对生物
+            if (!agent._hurtHook) {
+                agent._hurtHook = true;
+                agent._lastHurtAt = 0;
+                agent.bot.on('entityHurt', (e) => {
+                    if (e && e.id === agent.bot.entity.id) agent._lastHurtAt = Date.now();
+                });
+            }
+            if (Date.now() - agent._lastHurtAt > 10000) return;
             const enemy = world.getNearestEntityWhere(agent.bot, entity => mc.isHostile(entity), 8);
             if (enemy && await world.isClearPath(agent.bot, enemy)) {
                 say(agent, `Fighting ${enemy.name}!`);
@@ -173,7 +182,7 @@ const modes_list = [
         name: 'hunting',
         description: 'Hunt nearby animals when idle.',
         interrupts: ['action:followPlayer'],
-        on: true,
+        on: false, // 用户要求：不主动攻击生物（想让它打猎时可手动 !setMode hunting true）
         active: false,
         update: async function (agent) {
             const huntable = world.getNearestEntityWhere(agent.bot, entity => mc.isHuntable(entity), 8);
