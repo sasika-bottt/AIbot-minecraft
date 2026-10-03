@@ -3,6 +3,9 @@
 基于 [kolbytn/mindcraft](https://github.com/kolbytn/mindcraft) + DeepSeek，让 AI 伙伴通过 **FML3 握手进入 Forge 1.20.1 整合包服务端**，并实现**游戏内语音双工**（能听你说，也能用 3D 语音回你）。
 
 > 本仓库是我们在 Mindcraft 上游之上做的全部改动与踩坑记录，供开源/复用。
+>
+> 📌 **要动手搭一套，请先读 [`docs/BUILD_NOTES.md`](docs/BUILD_NOTES.md)** —— 版本矩阵、RCON 使用规约、坐标铁律、进程托管、故障速查表都在里面，能省掉大部分弯路。
+> 让 AI Agent 帮你操作的话，把 [`AGENTS.md`](AGENTS.md) 一起丢给它。
 
 ## 能力一览
 
@@ -36,7 +39,9 @@ server/             Forge 服务端配置样例
   user_jvm_args.txt         服务端 JVM 参数样例
   mods_list.txt             服务端 mod 清单
 assets/skin/        自绘皮肤与生成脚本（见「形象」一节）
+docs/BUILD_NOTES.md  ★ 构建注意事项（版本矩阵 / RCON 规约 / 坐标铁律 / 故障速查表 / Agent 协作规约）
 docs/logs/          全程工作日志（含每个坑的根因分析）
+AGENTS.md           给 AI Agent 的硬规则与索引（人和 agent 都可读）
 ```
 
 ## 快速开始
@@ -103,6 +108,8 @@ node main.js              # 主程序；启动后浏览器自动打开控制台 
 7. **长驻进程**：bash `(cmd &)` 分离启动的 java 会被会话回收，必须用受管理的后台任务。
 8. **掉线不会自动重连**，停服后要重启 Mindcraft 主程序。
 9. **改 mode 默认值要改两处**：`modes.js` 里的 `on` 只是初始默认，启动时会被 `wb.json` 的 `modes` 字段覆盖，两处都改才生效。
+
+> 以上只是最刺眼的几条。**完整版（含服务端搭建、RCON 规约、进程托管、坐标与 NBT 铁律、模组版本检查、备份策略、故障速查表）见 [`docs/BUILD_NOTES.md`](docs/BUILD_NOTES.md)。**
 
 ## 开源前检查清单（已全部完成）
 
