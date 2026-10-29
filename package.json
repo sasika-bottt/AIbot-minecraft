@@ -30,9 +30,33 @@
       "package.json"
     ],
     "extraResources": [
-      { "from": "runtime/node.exe", "to": "runtime/node.exe" },
-      { "from": "runtime/mindcraft-final", "to": "runtime/mindcraft", "filter": ["main.js", "settings.js", "wb.json", "package.json", "LICENSE", "native_voice.ps1", "src/**/*", "profiles/defaults/**/*", "bots/execTemplate.js", "bots/lintTemplate.js"] },
-      { "from": "runtime/mindcraft-final/node_modules", "to": "runtime/mindcraft/node_modules", "filter": ["**/*"] }
+      {
+        "from": "runtime/node.exe",
+        "to": "runtime/node.exe"
+      },
+      {
+        "from": "runtime/mindcraft-final",
+        "to": "runtime/mindcraft",
+        "filter": [
+          "main.js",
+          "settings.js",
+          "wb.json",
+          "package.json",
+          "LICENSE",
+          "native_voice.ps1",
+          "src/**/*",
+          "profiles/defaults/**/*",
+          "bots/execTemplate.js",
+          "bots/lintTemplate.js"
+        ]
+      },
+      {
+        "from": "runtime/mindcraft-final/node_modules",
+        "to": "runtime/mindcraft/node_modules",
+        "filter": [
+          "**/*"
+        ]
+      }
     ],
     "asarUnpack": [
       "node_modules/dsh-workbuddy-connect/**/*",
@@ -50,6 +74,9 @@
   },
   "dependencies": {
     "@deepseek-ai/dsh-home-paths": "^0.2.1-rc.2",
-    "dsh-workbuddy-connect": "^0.7.9"
+    "dsh-workbuddy-connect": "^0.7.9",
+    "extract-zip": "2.0.1",
+    "yauzl": "2.10.0"
   }
 }
+

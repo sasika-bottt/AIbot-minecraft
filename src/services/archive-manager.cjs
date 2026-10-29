@@ -3,6 +3,8 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
+const yauzl = require('yauzl');
+const extractZip = require('extract-zip');
 
 const execFileAsync = promisify(execFile);
 const SUPPORTED_EXTENSIONS = new Set(['.zip', '.mrpack', '.7z']);
@@ -31,16 +33,18 @@ class ArchiveManager {
       }
     }
 
-    const tar = resolveTarExecutable();
-    if (!tar) throw new Error('Windows 压缩包组件不可用，请先手动解压，再选择“已解压目录”。');
-    const entries = await listArchive(tar, source);
+    const zip = extension === '.zip' || extension === '.mrpack';
+    const tar = zip ? '' : resolveTarExecutable();
+    if (!zip && !tar) throw new Error('Windows 压缩包组件不可用，请先手动解压，再选择“已解压目录”。');
+    const entries = zip ? await listZip(source) : await listArchive(tar, source);
     validateArchiveEntries(entries);
     await fs.promises.mkdir(this.root, { recursive: true });
     assertFreeSpace(this.root, stat.size);
     const stage = path.join(this.root, `.${fingerprint}-${process.pid}-${Date.now()}`);
     await fs.promises.mkdir(stage, { recursive: true });
     try {
-      await execFileAsync(tar, ['-xf', source, '-C', stage], { timeout: 10 * 60 * 1000, windowsHide: true, maxBuffer: 8 * 1024 * 1024 });
+      if (zip) await extractZip(source, { dir: stage });
+      else await execFileAsync(tar, ['-xf', source, '-C', stage], { timeout: 10 * 60 * 1000, windowsHide: true, maxBuffer: 8 * 1024 * 1024 });
       validateExtractedTree(stage);
       const root = findPackRoot(stage);
       if (!root) throw new Error('压缩包内没有找到 mods、config、saves 或 world 目录，它可能只是不含实际模组的下载清单。');
@@ -60,6 +64,29 @@ class ArchiveManager {
     const inspection = this.inspectInstance(root);
     return { archivePath: source, extractedDirectory: destination, root, reused, inspection };
   }
+}
+
+function listZip(source) {
+  return new Promise((resolve, reject) => {
+    yauzl.open(source, { lazyEntries: true }, (error, archive) => {
+      if (error) return reject(new Error(`无法读取压缩包：${error.message}`));
+      const entries = [];
+      let bytes = 0;
+      archive.on('error', reject);
+      archive.on('end', () => entries.length ? resolve(entries) : reject(new Error('压缩包为空或无法读取。')));
+      archive.on('entry', (entry) => {
+        try {
+          validateArchiveEntries([entry.fileName]);
+          if (((entry.externalFileAttributes >>> 16) & 0o170000) === 0o120000) throw new Error('压缩包包含不允许的符号链接。');
+          entries.push(entry.fileName);
+          bytes += entry.uncompressedSize;
+          if (entries.length > MAX_EXTRACTED_FILES || bytes > MAX_EXTRACTED_BYTES) throw new Error('压缩包内容超过允许的大小或文件数。');
+          archive.readEntry();
+        } catch (error) { archive.close(); reject(error); }
+      });
+      archive.readEntry();
+    });
+  });
 }
 
 function resolveTarExecutable() {
@@ -163,3 +190,4 @@ function readJson(target) {
 }
 
 module.exports = { ArchiveManager, SUPPORTED_EXTENSIONS, MAX_EXTRACTED_FILES, MAX_EXTRACTED_BYTES, validateArchiveEntries, validateExtractedTree, findPackRoot, resolveTarExecutable };
+
