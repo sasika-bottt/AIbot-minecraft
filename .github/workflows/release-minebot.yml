@@ -18,7 +18,7 @@ jobs:
       - run: npm run check
       - run: node scripts/prepare-dist.cjs
       - run: npm test
-      - run: npm run dist
+      - run: npm run dist -- --publish never
       - run: node tests/release-purity-smoke.cjs
       - name: Publish installer
         shell: pwsh
