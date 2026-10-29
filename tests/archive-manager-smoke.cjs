@@ -17,7 +17,8 @@ async function main() {
     fs.writeFileSync(path.join(pack, 'saves', '测试世界', 'level.dat'), 'world');
     fs.writeFileSync(path.join(pack, 'manifest.json'), JSON.stringify({ minecraft: { version: '1.20.1', modLoaders: [{ id: 'forge-47.4.23', primary: true }] } }));
     const archive = path.join(root, 'pack.zip');
-    execFileSync('tar.exe', ['-a', '-cf', archive, '-C', pack, '.'], { windowsHide: true });
+    const tar = process.env.SystemRoot ? path.join(process.env.SystemRoot, 'System32', 'tar.exe') : 'tar.exe';
+    execFileSync(tar, ['-a', '-cf', archive, '-C', pack, '.'], { windowsHide: true });
     const manager = new ArchiveManager(path.join(root, 'profile'), inspectInstance);
     const first = await manager.prepare(archive);
     assert.equal(first.reused, false);
@@ -39,3 +40,4 @@ main().catch((error) => {
   console.error(error);
   process.exitCode = 1;
 });
+
