@@ -17,8 +17,10 @@ async function main() {
     fs.writeFileSync(path.join(pack, 'saves', '测试世界', 'level.dat'), 'world');
     fs.writeFileSync(path.join(pack, 'manifest.json'), JSON.stringify({ minecraft: { version: '1.20.1', modLoaders: [{ id: 'forge-47.4.23', primary: true }] } }));
     const archive = path.join(root, 'pack.zip');
-    const tar = process.env.SystemRoot ? path.join(process.env.SystemRoot, 'System32', 'tar.exe') : 'tar.exe';
-    execFileSync(tar, ['-a', '-cf', archive, '-C', pack, '.'], { windowsHide: true });
+    const ps = process.env.SystemRoot ? path.join(process.env.SystemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe') : 'powershell.exe';
+    execFileSync(ps, ['-NoProfile', '-NonInteractive', '-Command', 'Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::CreateFromDirectory($env:MINEBOT_TEST_PACK, $env:MINEBOT_TEST_ARCHIVE)'], {
+      windowsHide: true, env: { ...process.env, MINEBOT_TEST_PACK: pack, MINEBOT_TEST_ARCHIVE: archive }
+    });
     const manager = new ArchiveManager(path.join(root, 'profile'), inspectInstance);
     const first = await manager.prepare(archive);
     assert.equal(first.reused, false);
