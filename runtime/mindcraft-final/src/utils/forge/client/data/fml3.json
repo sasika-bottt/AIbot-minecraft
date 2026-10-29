@@ -1,0 +1,300 @@
+{
+ "types": {
+  "pstring": "native",
+  "string": [
+   "pstring",
+   {
+    "countType": "varint"
+   }
+  ],
+  "restBuffer": "native",
+  "forge_snapshot": [
+   "restBuffer",
+   {
+    "countType": "varint"
+   }
+  ],
+  "fml_loginwrapper": [
+   "container",
+   [
+    {
+     "name": "channel",
+     "type": "string"
+    },
+    {
+     "name": "data",
+     "type": [
+      "buffer",
+      {
+       "countType": "varint"
+      }
+     ]
+    }
+   ]
+  ],
+  "fml_handshake": [
+   "container",
+   [
+    {
+     "name": "discriminator",
+     "type": [
+      "mapper",
+      {
+       "type": "varint",
+       "mappings": {
+        "1": "ModList",
+        "2": "ModListReply",
+        "3": "ServerRegistry",
+        "4": "ConfigurationData",
+        "5": "ModData",
+        "6": "ChannelMismatchData",
+        "98": "Quark",
+        "99": "Acknowledgement"
+       }
+      }
+     ]
+    },
+    {
+     "name": "data",
+     "type": [
+      "switch",
+      {
+       "compareTo": "discriminator",
+       "fields": {
+        "ModList": [
+         "container",
+         [
+          {
+           "name": "modNames",
+           "type": [
+            "array",
+            {
+             "countType": "varint",
+             "type": "string"
+            }
+           ]
+          },
+          {
+           "name": "channels",
+           "type": [
+            "array",
+            {
+             "countType": "varint",
+             "type": [
+              "container",
+              [
+               {
+                "name": "name",
+                "type": "string"
+               },
+               {
+                "name": "marker",
+                "type": "string"
+               }
+              ]
+             ]
+            }
+           ]
+          },
+          {
+           "name": "registries",
+           "type": [
+            "array",
+            {
+             "countType": "varint",
+             "type": [
+              "container",
+              [
+               {
+                "name": "name",
+                "type": "string"
+               }
+              ]
+             ]
+            }
+           ]
+          },
+          {
+           "name": "dataPackRegistries",
+           "type": [
+            "array",
+            {
+             "countType": "varint",
+             "type": [
+              "container",
+              [
+               {
+                "name": "name",
+                "type": "string"
+               }
+              ]
+             ]
+            }
+           ]
+          }
+         ]
+        ],
+        "ModListReply": [
+         "container",
+         [
+          {
+           "name": "modNames",
+           "type": [
+            "array",
+            {
+             "countType": "varint",
+             "type": "string"
+            }
+           ]
+          },
+          {
+           "name": "channels",
+           "type": [
+            "array",
+            {
+             "countType": "varint",
+             "type": [
+              "container",
+              [
+               {
+                "name": "name",
+                "type": "string"
+               },
+               {
+                "name": "marker",
+                "type": "string"
+               }
+              ]
+             ]
+            }
+           ]
+          },
+          {
+           "name": "registries",
+           "type": [
+            "array",
+            {
+             "countType": "varint",
+             "type": [
+              "container",
+              [
+               {
+                "name": "name",
+                "type": "string"
+               },
+               {
+                "name": "marker",
+                "type": "string"
+               }
+              ]
+             ]
+            }
+           ]
+          }
+         ]
+        ],
+        "ServerRegistry": [
+         "container",
+         [
+          {
+           "name": "name",
+           "type": "string"
+          },
+          {
+           "name": "snapshot",
+           "type": [
+            "option",
+            "forge_snapshot"
+           ]
+          }
+         ]
+        ],
+        "ConfigurationData": [
+         "container",
+         [
+          {
+           "name": "name",
+           "type": "string"
+          },
+          {
+           "name": "data",
+           "type": "restBuffer"
+          }
+         ]
+        ],
+        "ModData": [
+         "container",
+         [
+          {
+           "name": "mods",
+           "type": [
+            "array",
+            {
+             "countType": "varint",
+             "type": [
+              "container",
+              [
+               {
+                "name": "key",
+                "type": "string"
+               },
+               {
+                "name": "value",
+                "type": [
+                 "container",
+                 [
+                  {
+                   "name": "first",
+                   "type": "string"
+                  },
+                  {
+                   "name": "second",
+                   "type": "string"
+                  }
+                 ]
+                ]
+               }
+              ]
+             ]
+            }
+           ]
+          }
+         ]
+        ],
+        "ChannelMismatchData": [
+         "container",
+         [
+          {
+           "name": "mismatchedChannelData",
+           "type": [
+            "array",
+            {
+             "countType": "varint",
+             "type": [
+              "container",
+              [
+               {
+                "name": "first",
+                "type": "string"
+               },
+               {
+                "name": "second",
+                "type": "string"
+               }
+              ]
+             ]
+            }
+           ]
+          }
+         ]
+        ],
+        "Quark": "void",
+        "Acknowledgement": "void"
+       }
+      }
+     ]
+    }
+   ]
+  ]
+ }
+}

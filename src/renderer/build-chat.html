@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'">
+  <title>管家模式 · minebot</title>
+  <link rel="stylesheet" href="build-chat.css">
+</head>
+<body>
+  <header class="titlebar">
+    <img src="assets/jingban-icon.png" alt="">
+    <span>minebot · 管家模式</span>
+    <span class="pill">同一个 AI 伙伴</span>
+  </header>
+  <main>
+    <section class="intro">
+      <div>
+        <span class="eyebrow">同一个 Agent，两种施工路径</span>
+        <h1>先选择管家怎样完成建造</h1>
+        <p>模式会改变伙伴的规划方式与预计成本，不会创建第二个 Agent。真正施工前仍需通过自检、备份和范围确认。</p>
+      </div>
+      <button id="clear" class="quiet">新建对话</button>
+    </section>
+    <section class="mode-picker" aria-label="管家模式选择">
+      <button class="mode-card" data-mode="manual">
+        <span class="mode-icon">⛏</span><span><strong>全手动</strong><small>伙伴收集材料、运输并逐块搭建；更有沉浸感，耗时与调用成本较高。</small></span><em>生存流程</em>
+      </button>
+      <button class="mode-card" data-mode="admin">
+        <span class="mode-icon">⌘</span><span><strong>管理员模式</strong><small>授权后由执行桥批量设计和生成；跳过采集，速度更快、调用成本较低。</small></span><em>需授权与备份</em>
+      </button>
+    </section>
+    <div id="mode-note" class="mode-note"></div>
+    <section id="messages" class="messages" aria-live="polite"></section>
+    <div id="error" class="error hidden"></div>
+    <section class="composer">
+      <textarea id="input" maxlength="12000" placeholder="例如：我想在村庄北边建一座中世纪旅馆，占地约 20×15，不要破坏旁边的农田……"></textarea>
+      <footer>
+        <span id="status">对话会自动保存在本机</span>
+        <button id="execute" class="execute hidden">备份并执行方案</button>
+        <span class="shortcut">Ctrl + Enter 发送</span>
+        <button id="send" class="send">发送给伙伴</button>
+      </footer>
+    </section>
+  </main>
+  <script src="build-chat.js"></script>
+</body>
+</html>

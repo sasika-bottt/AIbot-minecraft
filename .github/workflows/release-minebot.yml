@@ -1,0 +1,28 @@
+name: Build minebot 1.0.0
+on:
+  push:
+    branches: [minebot-release-1.0.0]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm --prefix runtime/mindcraft-final ci --omit=dev
+      - run: npm run check
+      - run: npm test
+      - run: npm run dist
+      - run: node tests/release-purity-smoke.cjs
+      - name: Publish installer
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create minebot-v1.0.0 dist/minebot-setup-1.0.0.exe --target "$env:GITHUB_SHA" --title "minebot 1.0.0" --notes "Windows 安装包。需要已登录的 WorkBuddy 客户端，用户自行提供游戏、Java、世界存档及兼容的 Forge 服务端整合包。不同模组环境可能需要调整。"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

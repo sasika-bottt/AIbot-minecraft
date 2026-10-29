@@ -1,0 +1,55 @@
+{
+  "name": "minebot-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "minebot：智能世界伙伴与服务器管家",
+  "main": "src/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "check": "node --check src/main.cjs && node --check src/preload.cjs && node --check src/services/config-store.cjs && node --check src/services/detector.cjs && node --check src/services/archive-manager.cjs && node --check src/services/workbuddy.cjs && node --check src/services/build-planner.cjs && node --check src/services/server-manager.cjs && node --check src/services/bot-manager.cjs && node --check src/services/sakura-frp.cjs && node --check src/renderer/app.js && node --check src/renderer/build-chat.js",
+    "test": "node tests/config-store-smoke.cjs && node tests/detector-smoke.cjs && node tests/archive-manager-smoke.cjs && node tests/build-planner-smoke.cjs && node tests/workbuddy-smoke.cjs && node tests/server-manager-smoke.cjs && node tests/bot-manager-smoke.cjs && node tests/sakura-frp-smoke.cjs && node tests/system-voices-smoke.cjs",
+    "test:planner": "node tests/build-planner-smoke.cjs",
+    "test:workbuddy": "node tests/workbuddy-smoke.cjs",
+    "test:server": "node tests/server-manager-smoke.cjs",
+    "test:bot": "node tests/bot-manager-smoke.cjs",
+    "test:sakura": "node tests/sakura-frp-smoke.cjs",
+    "predist": "node scripts/prepare-dist.cjs",
+    "dist": "electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "^38.2.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "cn.minebot.companion",
+    "productName": "minebot",
+    "artifactName": "minebot-setup-${version}.${ext}",
+    "files": [
+      "src/**/*",
+      "!src/renderer/assets/whale-skin.png",
+      "package.json"
+    ],
+    "extraResources": [
+      { "from": "runtime/node.exe", "to": "runtime/node.exe" },
+      { "from": "runtime/mindcraft-final", "to": "runtime/mindcraft", "filter": ["main.js", "settings.js", "wb.json", "package.json", "LICENSE", "native_voice.ps1", "src/**/*", "profiles/defaults/**/*", "bots/execTemplate.js", "bots/lintTemplate.js"] },
+      { "from": "runtime/mindcraft-final/node_modules", "to": "runtime/mindcraft/node_modules", "filter": ["**/*"] }
+    ],
+    "asarUnpack": [
+      "node_modules/dsh-workbuddy-connect/**/*",
+      "node_modules/@deepseek-ai/dsh-home-paths/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/jingban-icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-home-paths": "^0.2.1-rc.2",
+    "dsh-workbuddy-connect": "^0.7.9"
+  }
+}

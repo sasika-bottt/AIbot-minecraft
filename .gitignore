@@ -1,18 +1,16 @@
-# 密钥
-keys.json
-*.key
-*_token*
-
-# 运行时数据（大文件 / 个人记忆）
 node_modules/
-whisper_models/
-bots/
-bots_data/
-world/
-libraries/
-# 只忽略根目录的运行时日志；docs/logs/ 是项目文档，必须入库（故用 /logs/ 而非 logs/）
-/logs/
-crash-reports/
-
-# 个人路径产物
-*.pow
+dist/
+runtime/node.exe
+runtime/mindcraft-final/node_modules/
+runtime/mindcraft-final/bots/*
+!runtime/mindcraft-final/bots/execTemplate.js
+!runtime/mindcraft-final/bots/lintTemplate.js
+runtime/server-template/
+*.log
+.env
+.env.*
+profile/
+*.asar
+src/renderer/assets/app-icon.png
+build/app-icon.ico
+build/jingban-icon-256.png

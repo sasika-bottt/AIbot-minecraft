@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: file:; media-src 'self' data:; style-src 'self'; script-src 'self'">
+  <title>minebot</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="titlebar"><img class="app-mark" src="assets/jingban-icon.png" alt=""><span>minebot</span><span class="preview-tag">正式版 1.0</span></div>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo"><img src="assets/jingban-icon.png" alt="minebot"></div>
+        <div><strong>minebot</strong><small>智能世界伙伴</small></div>
+      </div>
+      <nav id="steps"></nav>
+      <div class="sidebar-note"><span class="status-dot"></span><span>所有设置保存在本机</span></div>
+    </aside>
+    <main>
+      <header class="topbar">
+        <div><small id="eyebrow">第 1 步，共 7 步</small><h1 id="page-title">选择 AI 模型</h1></div>
+        <div id="server-pill" class="server-pill hidden"><small>服务器地址</small><strong id="server-address">尚未就绪</strong></div>
+      </header>
+      <div id="notice" class="notice hidden"></div>
+      <section id="content" class="content"></section>
+      <footer>
+        <button id="back" class="button secondary">上一步</button>
+        <span id="save-state">配置会自动保存</span>
+        <button id="next" class="button primary">保存并继续</button>
+      </footer>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
