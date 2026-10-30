@@ -24,13 +24,13 @@
     </section>
     <section class="mode-picker" aria-label="管家模式选择">
       <button class="mode-card" data-mode="manual">
-        <span class="mode-icon">⛏</span><span><strong>生存建造规划</strong><small>生成材料、采集与施工计划；当前不会自动执行完整采集和建造。</small></span><em>规划</em>
+        <span class="mode-icon">⛏</span><span><strong>生存建造</strong><small>受限试用：普通方块、指定采集点和逐块施工；复杂建筑仍在开发。</small></span><em>试用</em>
       </button>
       <button class="mode-card" data-mode="admin">
         <span class="mode-icon">⌘</span><span><strong>管理员模式</strong><small>授权后由执行桥批量设计和生成；跳过采集，速度更快、调用成本较低。</small></span><em>需授权与备份</em>
       </button>
     </section>
-    <div id="mode-note" class="mode-note"></div>
+    <div class="mode-note"><div id="mode-note"></div><div id="survival-controls"><p>请在对话中写明维度、施工坐标，以及允许采集的方块坐标或采集区域的两个角。伙伴可扫描已加载的区域；请在预览中核对所有候选采集点。开始前会备份世界。</p><div class="survival-actions"><button id="survival-preview" class="quiet">生成施工预览</button><button id="survival-stop" class="quiet">暂停施工</button><button id="survival-resume" class="quiet">继续上次施工</button><span id="survival-status">施工状态：未开始</span></div></div></div>
     <section id="messages" class="messages" aria-live="polite"></section>
     <div id="error" class="error hidden"></div>
     <section class="composer">
@@ -44,7 +44,7 @@
       </footer>
     </section>
   </main>
+  <dialog id="blueprint-dialog"><form method="dialog"><h2>核对生存施工计划</h2><p>以下每个采集坐标都可能被伙伴挖掘，施工位置必须为空。请逐项核对；不会自动拆除施工区内已有的方块。</p><div id="blueprint-summary" class="blueprint-summary"></div><details id="blueprint-details"><summary>查看或编辑详细坐标（高级）</summary><textarea id="blueprint-json" spellcheck="false" aria-label="施工计划"></textarea></details><div class="dialog-actions"><button value="cancel" class="quiet">取消</button><button id="start-survival" value="start" class="send">确认并备份施工</button></div></form></dialog>
   <script src="build-chat.js"></script>
 </body>
 </html>
-

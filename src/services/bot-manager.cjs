@@ -151,6 +151,21 @@ class BotManager {
     } finally { socket.disconnect(); }
   }
 
+  async survivalRequest(request) {
+    if (!this.child || this.child.exitCode !== null || !this.state.ready || !this.mindserverPort) throw new Error('请先启动服务器并等待伙伴进入游戏。');
+    if (!['start', 'stop', 'status', 'scan'].includes(request?.action)) throw new Error('施工操作无效。');
+    const { io } = require(path.join(this.project, 'node_modules', 'socket.io-client'));
+    const socket = io(`http://localhost:${this.mindserverPort}`, { reconnection: false, timeout: 5000, transports: ['websocket'] });
+    try {
+      await new Promise((resolve, reject) => { socket.once('connect', resolve); socket.once('connect_error', reject); });
+      return await new Promise((resolve, reject) => socket.timeout(7000).emit('minebot-survival', this.state.name, request, (error, result) => {
+        if (error) return reject(new Error('等待游戏伙伴响应超时。'));
+        if (!result?.ok) return reject(new Error(result?.message || '游戏伙伴无法处理施工操作。'));
+        resolve(result.result);
+      }));
+    } finally { socket.disconnect(); }
+  }
+
   async stop() {
     clearTimeout(this.startupTimer);
     if (!this.child || this.child.exitCode !== null) {
@@ -247,4 +262,3 @@ async function writeJsonAtomic(target, value) {
 }
 
 module.exports = { BotManager, findNodeExecutable, findBundledProject, inspectBotRuntime, botSupportsMinecraftVersion, findAvailablePort, diagnoseBotOutput, buildPersonaPrompt };
-

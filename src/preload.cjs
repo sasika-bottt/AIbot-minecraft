@@ -22,6 +22,11 @@ contextBridge.exposeInMainWorld('whale', {
   setBuildPlannerMode: (mode) => ipcRenderer.invoke('build:set-mode', mode),
   sendBuildMessage: (message) => ipcRenderer.invoke('build:send', message),
   discussWithAgent: () => ipcRenderer.invoke('build:discuss-with-agent'),
+  generateSurvivalBlueprint: () => ipcRenderer.invoke('build:survival-blueprint'),
+  survivalStatus: () => ipcRenderer.invoke('build:survival-status'),
+  startSurvivalBuild: (plan) => ipcRenderer.invoke('build:survival-start', plan),
+  resumeSurvivalBuild: () => ipcRenderer.invoke('build:survival-resume'),
+  stopSurvivalBuild: () => ipcRenderer.invoke('build:survival-stop'),
   clearBuildConversation: () => ipcRenderer.invoke('build:clear'),
   executeAdminBuild: () => ipcRenderer.invoke('build:admin-execute'),
   serverStatus: () => ipcRenderer.invoke('server:status'),
@@ -36,4 +41,3 @@ contextBridge.exposeInMainWorld('whale', {
   runSelfCheck: (config) => ipcRenderer.invoke('app:self-check', config),
   openPath: (target) => ipcRenderer.invoke('shell:open-path', target)
 });
-

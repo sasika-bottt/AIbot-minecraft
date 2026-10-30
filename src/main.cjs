@@ -4,6 +4,7 @@ const { app, BrowserWindow, ipcMain, dialog, safeStorage, shell, nativeImage } =
 const { ConfigStore } = require('./services/config-store.cjs');
 const { WorkBuddyService } = require('./services/workbuddy.cjs');
 const { BuildPlanner } = require('./services/build-planner.cjs');
+const { SurvivalJobs } = require('./services/survival-jobs.cjs');
 const { ServerManager, resolveTemplate, findWinArgs, assessRuntimeCompatibility, selectJavaRuntime, isPortAvailable } = require('./services/server-manager.cjs');
 const { BotManager, findNodeExecutable, findBundledProject, inspectBotRuntime, botSupportsMinecraftVersion } = require('./services/bot-manager.cjs');
 const { SakuraFrpService } = require('./services/sakura-frp.cjs');
@@ -16,6 +17,7 @@ let mainWindow;
 let configStore;
 let workbuddy;
 let buildPlanner;
+let survivalJobs;
 let buildWindow;
 let serverManager;
 let botManager;
@@ -140,6 +142,7 @@ if (hasSingleInstanceLock) app.whenReady().then(() => {
   archiveManager = new ArchiveManager(configStore.publicPaths().dataDirectory, inspectInstance);
   buildPlanner = new BuildPlanner(configStore.publicPaths().dataDirectory, configStore, workbuddy);
   serverManager = new ServerManager(configStore.publicPaths().dataDirectory, { systemScan, inspectInstance });
+  survivalJobs = new SurvivalJobs(configStore.publicPaths().dataDirectory, serverManager, botManager);
   serverManager.setLifecycleHooks({
     onReady: (config) => botManager.start(config),
     onStopped: () => botManager.stop()
@@ -234,6 +237,17 @@ ipcMain.handle('build:get-state', () => buildPlanner.load());
 ipcMain.handle('build:set-mode', (_event, mode) => buildPlanner.setMode(mode));
 ipcMain.handle('build:send', (_event, message) => buildPlanner.send(message));
 ipcMain.handle('build:clear', () => buildPlanner.clear());
+ipcMain.handle('build:survival-blueprint', async () => survivalJobs.preview(await buildPlanner.survivalBlueprint()));
+ipcMain.handle('build:survival-status', () => survivalJobs.status());
+ipcMain.handle('build:survival-start', async (_event, plan) => {
+  if (buildPlanner.load().mode !== 'manual') throw new Error('请先选择生存建造。');
+  return survivalJobs.start(plan);
+});
+ipcMain.handle('build:survival-resume', () => {
+  if (buildPlanner.load().mode !== 'manual') throw new Error('请先选择生存建造。');
+  return survivalJobs.resume();
+});
+ipcMain.handle('build:survival-stop', () => survivalJobs.stop());
 ipcMain.handle('build:admin-execute', async () => {
   const commands = buildPlanner.adminCommands();
   return serverManager.executeAdminCommands(commands);
@@ -345,4 +359,3 @@ ipcMain.handle('app:self-check', async (_event, config) => {
   const pending = checks.filter((check) => check.status === 'pending');
   return { ready: blockingFailures.length === 0, checks, blockingFailures: blockingFailures.length, pending: pending.length, scannedAt: new Date().toISOString() };
 });
-

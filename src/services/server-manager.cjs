@@ -262,7 +262,7 @@ class ServerManager {
       }
       await fs.promises.writeFile(opsPath, `${JSON.stringify(operators, null, 2)}\n`, 'utf8');
     }
-    await fs.promises.writeFile(path.join(directory, 'build-info.json'), `${JSON.stringify({ sourceInstance: instanceRoot, sourceWorld: worldPath, template, excludedMods, createdAt: new Date().toISOString() }, null, 2)}\n`, 'utf8');
+    await fs.promises.writeFile(path.join(directory, 'build-info.json'), `${JSON.stringify({ sourceInstance: instanceRoot, sourceWorld: worldPath, parentWorld: samePath(worldSource, worldPath) ? '' : path.resolve(worldSource), template, excludedMods, createdAt: new Date().toISOString() }, null, 2)}\n`, 'utf8');
     return { directory, worldPath, excludedMods, instanceRoot };
   }
 
@@ -317,12 +317,14 @@ class ServerManager {
   }
 
   async executeAdminCommands(commands) {
+    if (this.survivalBackupBusy) throw new Error('正在创建世界备份，请稍候。');
     if (!this.child || this.child.exitCode !== null || !this.state.ready) throw new Error('服务器尚未就绪，不能执行管理员施工。');
     const child = this.child;
     const validated = validateAdminCommands(commands);
     const world = path.join(this.state.serverDirectory, 'world');
     if (!fs.existsSync(path.join(world, 'level.dat'))) throw new Error('当前服务器世界不完整，已拒绝执行。');
     const backup = path.join(this.state.serverDirectory, 'backups', `admin-${formatLocalTimestamp(new Date())}`);
+    this.survivalBackupBusy = true;
     child.stdin.write('save-off\n');
     try {
       const saved = waitForServerOutput(child, /Saved the game|Saved the world/i, 30000);
@@ -336,11 +338,58 @@ class ServerManager {
       if (!fs.existsSync(path.join(backup, 'level.dat'))) throw new Error('施工前备份校验失败。');
     } finally {
       if (child.stdin?.writable) child.stdin.write('save-on\n');
+      this.survivalBackupBusy = false;
     }
     if (this.child !== child || child.exitCode !== null || !child.stdin?.writable) throw new Error('服务器已停止，备份保留，未执行施工命令。');
     for (const command of validated) child.stdin.write(`${command.replace(/^\//, '')}\n`);
     child.stdin.write('save-all flush\n');
     return { ok: true, commandCount: validated.length, backupPath: backup, message: `已提交 ${validated.length} 条建造命令；请检查服务器日志确认每条命令的结果。施工前备份已保存。` };
+  }
+
+  async backupForSurvivalBuild() {
+    if (this.survivalBackupBusy) throw new Error('正在创建施工备份，请稍候。');
+    if (!this.child || this.child.exitCode !== null || !this.state.ready || !this.child.stdin?.writable) throw new Error('服务器尚未就绪，不能备份施工世界。');
+    this.survivalBackupBusy = true;
+    const child = this.child;
+    const world = path.join(this.state.serverDirectory, 'world');
+    const backup = path.join(this.state.serverDirectory, 'backups', `survival-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+    try {
+      if (!fs.existsSync(path.join(world, 'level.dat'))) throw new Error('当前服务器世界不完整，已取消施工。');
+      child.stdin.write('save-off\n');
+      const saved = waitForServerOutput(child, /Saved the game|Saved the world/i, 30000);
+      child.stdin.write('save-all flush\n');
+      await saved;
+      await fs.promises.mkdir(path.dirname(backup), { recursive: true });
+      await fs.promises.cp(world, backup, { recursive: true, errorOnExist: true, force: false, filter: source => path.relative(world, source).toLowerCase() !== 'session.lock' });
+      if (!fs.existsSync(path.join(backup, 'level.dat'))) throw new Error('施工前备份校验失败。');
+      if (this.child !== child || child.exitCode !== null || !child.stdin?.writable) throw new Error('服务器已停止，备份保留，未开始施工。');
+      return backup;
+    } finally {
+      if (child.stdin?.writable) child.stdin.write('save-on\n');
+      this.survivalBackupBusy = false;
+    }
+  }
+
+  isWorldContinuation(savedWorld) {
+    if (!this.state.ready || !savedWorld) return false;
+    let current = path.resolve(this.state.serverDirectory, 'world');
+    const target = path.resolve(savedWorld);
+    const builds = path.resolve(this.root, 'builds');
+    const seen = new Set();
+    for (let i = 0; i < 128; i++) {
+      if (samePath(current, target)) return true;
+      const dir = path.dirname(current), relative = path.relative(builds, dir);
+      if (!relative || relative.startsWith('..') || path.isAbsolute(relative) || relative.split(path.sep).length !== 1 || seen.has(dir)) return false;
+      seen.add(dir);
+      let info;
+      try { info = JSON.parse(fs.readFileSync(path.join(dir, 'build-info.json'), 'utf8')); } catch { return false; }
+      if (!info.parentWorld || path.basename(info.parentWorld) !== 'world') return false;
+      const parent = path.resolve(info.parentWorld), parentDir = path.dirname(parent);
+      const parentRelative = path.relative(builds, parentDir);
+      if (!parentRelative || parentRelative.startsWith('..') || path.isAbsolute(parentRelative) || parentRelative.split(path.sep).length !== 1 || !fs.existsSync(path.join(parentDir, '.minebot-clean-stop'))) return false;
+      current = parent;
+    }
+    return false;
   }
 
   async exportDailyWorld(serverDirectory, instancePath, now = new Date()) {
@@ -599,4 +648,3 @@ function parseCoordinate(value) {
 }
 
 module.exports = { ServerManager, SUPPORTED_RUNTIME, CLIENT_ONLY_MOD_FRAGMENTS, clientOnlyModReason, setPropertyOverride, resolveTemplate, findWinArgs, assessRuntimeCompatibility, selectJavaRuntime, isPortAvailable, diagnoseServerOutput, validateAdminCommands, updateProperties, renameWorldDisplayName, offlinePlayerUuid };
-

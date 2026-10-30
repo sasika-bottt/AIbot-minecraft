@@ -83,6 +83,12 @@ export function initBot(username) {
     }
 
     const bot = createBot(options);
+    // Mineflayer's game.dimension may describe the dimension *type*, which
+    // modded worlds can share. Preserve the actual world identifier from the
+    // protocol and fail closed when it is unavailable.
+    const trackWorld = packet => { bot.minebotWorldName = typeof packet.worldName === 'string' ? packet.worldName : null; };
+    bot._client.on('login', trackWorld);
+    bot._client.on('respawn', trackWorld);
 
     // Forge server support:
     // - forge_server: true  → FML3 (Forge 1.13+)，用 autoVersionForge 自动探测并握手

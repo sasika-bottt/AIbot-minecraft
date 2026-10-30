@@ -2,6 +2,7 @@ import { io } from 'socket.io-client';
 import convoManager from './conversation.js';
 import { setSettings } from './settings.js';
 import { getFullState } from './library/full_state.js';
+import { SurvivalController } from './npc/survival_controller.js';
 
 // agent's individual connection to the mindserver
 // always connect to localhost
@@ -74,6 +75,19 @@ class MindServerProxy {
             catch (error) { callback({ ok: false, message: String(error.message || error) }); }
         });
 
+        this.socket.on('minebot-survival', (request, callback) => {
+            try {
+                this.agent.survivalController ||= new SurvivalController(this.agent);
+                const controller = this.agent.survivalController;
+                const result = request?.action === 'start' ? controller.start(request.plan, request.dimension)
+                    : request?.action === 'scan' ? controller.scan(request.plan, request.dimension, request.areas)
+                    : request?.action === 'stop' ? controller.stop()
+                    : request?.action === 'status' ? controller.status() : null;
+                if (!result) throw new Error('无效的施工操作。');
+                callback({ ok: true, result });
+            } catch (error) { callback({ ok: false, message: String(error.message || error) }); }
+        });
+
         this.socket.on('get-full-state', (callback) => {
             try {
                 const state = getFullState(this.agent);
@@ -139,4 +153,3 @@ export function sendBotChatToServer(agentName, json) {
 export function sendOutputToServer(agentName, message) {
     serverProxy.getSocket().emit('bot-output', agentName, message);
 }
-

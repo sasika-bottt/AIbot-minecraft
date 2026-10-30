@@ -100,6 +100,24 @@ class BuildPlanner {
     }
   }
 
+  async survivalBlueprint() {
+    const state = this.load();
+    if (state.mode !== 'manual') throw new Error('请先选择生存建造。');
+    if (!state.messages.some(message => message.role === 'user')) throw new Error('请先在对话中说明建筑、坐标和允许采集的方块。');
+    if (this.busy) throw new Error('伙伴正在思考，请稍后再试。');
+    this.busy = true;
+    try {
+      const request = `根据上面的对话生成可审阅的生存施工 JSON。只输出 JSON，不要代码围栏或解释。格式：{"dimension":"minecraft:overworld","bounds":{"min":{"x":0,"y":64,"z":0},"max":{"x":1,"y":64,"z":0}},"blocks":[{"x":0,"y":64,"z":0,"name":"dirt"}],"sources":[{"x":5,"y":64,"z":0,"name":"oak_log","product":"oak_planks"}]}。bounds 是施工范围，blocks 是每个要放置的方块，sources 是用户明确允许采集的具体坐标；sources 可为空，只用伙伴背包中现有材料。只能使用普通方块 dirt、cobblestone、stone、oak_planks、spruce_planks、birch_planks、jungle_planks、acacia_planks、dark_oak_planks、bricks、stone_bricks；采集只能使用 dirt、cobblestone 和以上各木种的 _log，原木可合成对应 _planks。每个坐标必须是整数，最多 512 个施工方块，施工范围每个方向最多 33 格，采集坐标不能在施工范围内。不得添加箱子、门、床、楼梯、空气或模组方块，不得生成指令，不得自行猜测玩家没有明确提供的施工位置、维度和采集位置。若信息不足或无法用这些方块表达，输出 {"error":"具体说明缺少的信息或不支持的内容"}。`;
+      const scanRequest = `${request}\n如果用户明确给出允许采集的矩形区域两角坐标，可以附加 harvestAreas:[{"min":{"x":1,"y":64,"z":1},"max":{"x":4,"y":68,"z":4}}]，由已进入游戏的伙伴只读扫描这些区域，再显示具体候选方块供用户确认。每个方向最多 33 格，总体积最多 32768 方块。没有用户明确给出的区域时不要填写或猜测。`;
+      const response = await this.complete([...state.messages, { role: 'user', content: scanRequest }], 'manual');
+      const stripped = response.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+      let parsed;
+      try { parsed = JSON.parse(stripped); } catch { throw new Error('伙伴没有返回有效的施工 JSON，请补充明确坐标后重试。'); }
+      if (parsed?.error) throw new Error(String(parsed.error).slice(0, 600));
+      return parsed;
+    } finally { this.busy = false; }
+  }
+
   async complete(history, mode) {
     const config = this.configStore.load();
     const messages = [
@@ -111,6 +129,7 @@ class BuildPlanner {
       const gateway = await this.workbuddy.startGateway();
       const response = await fetch(`${gateway.baseUrl}/v1/chat/completions`, {
         method: 'POST',
+        signal: AbortSignal.timeout(120000),
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${gateway.token}` },
         body: JSON.stringify({ model: config.model.workbuddyModel, messages, stream: true })
       });
@@ -123,6 +142,7 @@ class BuildPlanner {
     const endpoint = chatEndpoint(config.model.baseUrl);
     const response = await fetch(endpoint, {
       method: 'POST',
+      signal: AbortSignal.timeout(120000),
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({ model: config.model.modelId, messages, stream: false })
     });

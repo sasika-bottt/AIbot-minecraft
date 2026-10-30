@@ -1,7 +1,7 @@
-name: Build minebot 1.0.2
+name: Build minebot 1.0.3 beta
 on:
   push:
-    branches: [minebot-release-1.0.2]
+    branches: [minebot-release-1.0.3-beta.1]
   workflow_dispatch:
 permissions:
   contents: write
@@ -25,6 +25,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create minebot-v1.0.2 dist/minebot-setup-1.0.2.exe --target "$env:GITHUB_SHA" --title "minebot 1.0.2 测试版" --prerelease --notes "增加 CustomSkinLoader 本机皮肤导出，以及将生存建造需求交给同一游戏伙伴只读讨论。全自动采集和建造、跨客户端皮肤分发尚未实现；语音和公网联机需要用户环境实测。需要已登录的 WorkBuddy 客户端、游戏、Java、世界存档和兼容 Forge 服务端。"
+          gh release create minebot-v1.0.3-beta.1 dist/minebot-setup-1.0.3-beta.1.exe --target "$env:GITHUB_SHA" --title "minebot 1.0.3 测试版 beta.1" --prerelease --notes "新增受限生存建造试用：可确认施工计划、扫描指定采集区域、备份、由同一伙伴采集和放置部分普通方块，并暂停或重启后继续。复杂建筑、工具制作、模组材料、任意配方与自动安全采集尚未完成；请逐项核对采集点。跨客户端皮肤分发、远程联机和双向语音仍需更多测试。需要已登录的 WorkBuddy 客户端或自行提供 API、游戏、Java、世界存档和兼容 Forge 服务端。"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-

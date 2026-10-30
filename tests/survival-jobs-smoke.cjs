@@ -1,0 +1,41 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { pathToFileURL } = require('node:url');
+const { SurvivalJobs } = require('../src/services/survival-jobs.cjs');
+const { ServerManager } = require('../src/services/server-manager.cjs');
+
+async function main() {
+  const { validateSurvivalPlan } = await import(pathToFileURL(path.join(__dirname, '../runtime/mindcraft-final/src/agent/npc/survival_build.js')).href);
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'minebot-jobs-test-'));
+  const events = []; let world = path.join(root, 'world-a'); let phase = 'idle';
+  const server = { status: () => ({ ready: true, serverDirectory: world }), backupForSurvivalBuild: async () => { events.push('backup'); return path.join(root, 'backup'); } };
+  const bot = { survivalRequest: async req => { events.push(req.action); if (req.action === 'status') return { phase }; if (req.action === 'start') { phase = 'building'; return { phase }; } phase = 'paused'; return { phase }; } };
+  const jobs = new SurvivalJobs(root, server, bot, validateSurvivalPlan);
+  const pos = (x,y,z,name) => ({x,y,z,name});
+  const plan = { dimension:'minecraft:overworld', bounds:{min:pos(0,0,0),max:pos(1,0,0)}, blocks:[pos(0,0,0,'dirt')], sources:[pos(5,0,0,'dirt')] };
+  await jobs.start(plan);
+  assert.deepEqual(events, ['status','backup','start']);
+  assert.equal(jobs.load().worldDirectory, path.resolve(world, 'world'));
+  await assert.rejects(() => jobs.start(plan), /已有施工任务/);
+  await jobs.stop(); world = path.join(root, 'world-b');
+  await assert.rejects(() => jobs.resume(), /世界.*不一致/);
+  world = path.join(root, 'world-a'); await jobs.resume();
+  assert.equal(events.filter(x => x === 'backup').length, 2);
+  await jobs.stop();
+  const old = events.length;
+  await assert.rejects(() => jobs.start({...plan, dimension:'unknown'}), /维度|主世界/);
+  assert.equal(events.length, old);
+  const lineage = new ServerManager(root, {});
+  const a = path.join(lineage.root, 'builds', 'a'); const b = path.join(lineage.root, 'builds', 'b');
+  fs.mkdirSync(a, {recursive:true}); fs.mkdirSync(b, {recursive:true});
+  fs.writeFileSync(path.join(b,'build-info.json'), JSON.stringify({parentWorld:path.join(a,'world')}));
+  lineage.state = {...lineage.state, ready:true, serverDirectory:b};
+  assert.equal(lineage.isWorldContinuation(path.join(a,'world')), false);
+  fs.writeFileSync(path.join(a,'.minebot-clean-stop'), '');
+  assert.equal(lineage.isWorldContinuation(path.join(a,'world')), true);
+  assert.equal(lineage.isWorldContinuation(path.join(root,'unrelated','world')), false);
+  console.log('survival jobs smoke test passed');
+}
+main().catch(e => { console.error(e); process.exitCode = 1; });

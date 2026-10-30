@@ -31,7 +31,7 @@ try {
   const packedPaths = asar.listPackage(archive);
   assert.ok(!packedPaths.some((entry) => /whale-skin\.png$/i.test(entry)), '不得打包个人伙伴皮肤');
   const appSources = packedPaths.filter((entry) => /\.(cjs|js|html|json)$/i.test(entry) && /^\\src\\/i.test(entry));
-  for (const relative of ['src\\services\\config-store.cjs', 'src\\services\\detector.cjs', 'src\\services\\bot-manager.cjs', 'src\\services\\server-manager.cjs', 'src\\services\\skin-export.cjs', 'src\\renderer\\app.js']) {
+  for (const relative of ['src\\main.cjs', 'src\\preload.cjs', 'src\\services\\config-store.cjs', 'src\\services\\detector.cjs', 'src\\services\\bot-manager.cjs', 'src\\services\\server-manager.cjs', 'src\\services\\build-planner.cjs', 'src\\services\\skin-export.cjs', 'src\\services\\survival-jobs.cjs', 'src\\renderer\\app.js', 'src\\renderer\\build-chat.js', 'src\\renderer\\build-chat.html']) {
     assert.deepEqual(asar.extractFile(archive, relative), fs.readFileSync(path.join(__dirname, '..', relative)), `打包源码不是最新版本：${relative}`);
   }
   const forbidden = ['EXAMPLE_PERSONAL_MARKER'];
@@ -40,6 +40,9 @@ try {
     for (const value of forbidden) assert.ok(!content.includes(value), `安装包中发现个人测试标识: ${entry}`);
   }
   const botDir = path.join(resources, 'runtime', 'mindcraft', 'bots');
+  for (const relative of ['src/agent/npc/survival_build.js', 'src/agent/npc/survival_adapter.js', 'src/agent/npc/survival_controller.js', 'src/agent/mindserver_proxy.js', 'src/mindcraft/mindserver.js', 'src/utils/mcdata.js']) {
+    assert.deepEqual(fs.readFileSync(path.join(resources, 'runtime', 'mindcraft', relative)), fs.readFileSync(path.join(__dirname, '..', 'runtime', 'mindcraft-final', relative)), `伙伴运行代码不是最新版本：${relative}`);
+  }
   assert.deepEqual(fs.readdirSync(botDir).sort(), ['execTemplate.js', 'lintTemplate.js']);
   const profile = JSON.parse(fs.readFileSync(path.join(resources, 'runtime', 'mindcraft', 'wb.json'), 'utf8'));
   assert.equal(profile.name, '');
@@ -55,4 +58,3 @@ try {
 } finally {
   fs.rmSync(root, { recursive: true, force: true });
 }
-

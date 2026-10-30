@@ -41,6 +41,12 @@ async function main() {
     assert.match(lastRequest.messages[0].content, /管理员模式/);
     planner.setMode('manual');
     assert.equal(planner.load().messages.length, 0);
+    await assert.rejects(() => planner.survivalBlueprint(), /先在对话中/);
+    planner.save({ mode:'manual', messages:[{role:'user', content:'主世界 x=0 y=64 z=0 建泥土方块，背包供料。'}] });
+    planner.complete = async () => '```json\n{"dimension":"minecraft:overworld","bounds":{"min":{"x":0,"y":64,"z":0},"max":{"x":0,"y":64,"z":0}},"blocks":[{"x":0,"y":64,"z":0,"name":"dirt"}],"sources":[]}\n```';
+    assert.equal((await planner.survivalBlueprint()).blocks[0].name, 'dirt');
+    planner.complete = async () => '{"error":"缺少坐标"}';
+    await assert.rejects(() => planner.survivalBlueprint(), /缺少坐标/);
     planner.setMode('admin');
     assert.equal(planner.load().messages.length, 2);
     console.log('build planner smoke test passed');
