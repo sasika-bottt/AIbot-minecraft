@@ -10,7 +10,7 @@ class SakuraFrpService {
     this.launcher = options.launcher || DEFAULT_LAUNCHER;
   }
 
-  status() {
+  status(network = {}) {
     const logsDirectory = path.join(this.root, 'Logs');
     const logs = fs.existsSync(logsDirectory)
       ? fs.readdirSync(logsDirectory).filter((name) => /^SakuraFrpService\..+\.log$/i.test(name)).sort().map((name) => path.join(logsDirectory, name))
@@ -18,8 +18,10 @@ class SakuraFrpService {
     const tunnels = new Map();
     for (const log of logs.slice(-7)) parseLog(fs.readFileSync(log, 'utf8'), tunnels);
     const rows = [...tunnels.values()];
-    const game = rows.find((row) => row.protocol === 'tcp' && row.localPort === 25565) || rows.find((row) => row.protocol === 'tcp') || null;
-    const voice = rows.find((row) => row.protocol === 'udp' && row.localPort === 24454) || rows.find((row) => row.protocol === 'udp') || null;
+    const gamePort = Number(network.gameLocalPort) || 25565;
+    const voicePort = Number(network.voiceLocalPort) || 24454;
+    const game = rows.find((row) => row.protocol === 'tcp' && row.localPort === gamePort && row.running) || rows.find((row) => row.protocol === 'tcp' && row.localPort === gamePort) || null;
+    const voice = rows.find((row) => row.protocol === 'udp' && row.localPort === voicePort && row.running) || rows.find((row) => row.protocol === 'udp' && row.localPort === voicePort) || null;
     return {
       installed: fs.existsSync(this.launcher),
       launcherPath: fs.existsSync(this.launcher) ? this.launcher : '',
@@ -27,7 +29,7 @@ class SakuraFrpService {
       running: Boolean(game?.running || voice?.running),
       game,
       voice,
-      message: game?.running ? `游戏公网地址：${game.address}` : (game?.address ? `SakuraFrp 隧道已关闭；上次地址 ${game.address}` : '尚未检测到游戏 TCP 隧道')
+      message: game?.running ? `日志显示游戏隧道已启动：${game.address}；请实际验证连通性` : (game?.address ? `日志显示游戏隧道已关闭；上次地址 ${game.address}` : `未发现匹配本地 TCP ${gamePort} 的隧道日志`)
     };
   }
 }
@@ -62,3 +64,4 @@ function getTunnel(tunnels, id) {
 }
 
 module.exports = { SakuraFrpService, parseLog };
+

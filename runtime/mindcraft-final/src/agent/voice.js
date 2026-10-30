@@ -286,7 +286,7 @@ function sttRequest(wavPath) {
 /** 玩家声音监听：按 sender 累积 PCM，静音超时切片送识别 */
 function setupListening() {
     const buffers = new Map(); // sender -> { chunks: [], total: 0, timer: null }
-    _bot.on('voicechat_player_sound', (data) => {
+    const onPlayerSound = (data) => {
         const sender = data.sender || 'unknown';
         const pcm = data.data;
         if (!pcm || pcm.length < 100) return;
@@ -311,11 +311,14 @@ function setupListening() {
             if (entry.total < MIN_SEGMENT_MS * 96) return; // 48kHz*2字节 → 96 bytes/ms
             finishSegment(sender, Buffer.concat(entry.chunks));
         }, SEGMENT_SILENCE_MS);
-    });
+    };
+    _bot.on('voicechat_player_sound', onPlayerSound);
+    _bot.on('voicechat_group_sound', onPlayerSound);
 }
 
 function playerName(uuid) {
     try {
+        if (_bot.players && Object.prototype.hasOwnProperty.call(_bot.players, String(uuid))) return String(uuid);
         for (const [name, p] of Object.entries(_bot.players || {})) {
             if (p.uuid === uuid) return name;
         }
@@ -368,3 +371,4 @@ async function _drainStt() {
         if (_sttQueue.length > 0) _drainStt(); // 若期间有新片段继续
     }
 }
+

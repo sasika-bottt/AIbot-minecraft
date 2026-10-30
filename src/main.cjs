@@ -9,7 +9,7 @@ const { BotManager, findNodeExecutable, findBundledProject, inspectBotRuntime, b
 const { SakuraFrpService } = require('./services/sakura-frp.cjs');
 const { systemScan, inspectInstance } = require('./services/detector.cjs');
 const { ArchiveManager } = require('./services/archive-manager.cjs');
-const { listSystemVoices, previewSystemVoice } = require('./services/system-voices.cjs');
+const { listSystemVoices, previewSystemVoice, hasChineseRecognizer } = require('./services/system-voices.cjs');
 
 let mainWindow;
 let configStore;
@@ -255,7 +255,7 @@ ipcMain.handle('server:stop', () => serverManager.stop());
 ipcMain.handle('bot:status', () => botManager.status());
 ipcMain.handle('bot:start', (_event, config) => botManager.start(config));
 ipcMain.handle('bot:stop', () => botManager.stop());
-ipcMain.handle('network:sakura-status', () => sakuraFrp.status());
+ipcMain.handle('network:sakura-status', (_event, network) => sakuraFrp.status(network || configStore.load().network));
 ipcMain.handle('network:sakura-open', async () => {
   const status = sakuraFrp.status();
   if (!status.launcherPath) return { ok: false, message: '未找到 SakuraFrp 启动器。' };
@@ -276,7 +276,7 @@ ipcMain.handle('shell:open-path', (_event, target) => {
 ipcMain.handle('app:self-check', async (_event, config) => {
   const scan = await systemScan();
   const wb = config.model.channel === 'workbuddy' ? await workbuddy.status() : null;
-  const sakura = config.network.mode === 'sakurafrp' ? sakuraFrp.status() : null;
+  const sakura = config.network.mode === 'sakurafrp' ? sakuraFrp.status(config.network) : null;
   const instance = config.game.instancePath ? inspectInstance(config.game.instancePath) : { exists: false, voiceMods: [], worlds: [] };
   const modelOk = config.model.channel === 'workbuddy' ? Boolean(wb?.signedIn && config.model.workbuddyModel) : Boolean(config.model.baseUrl && config.model.modelId && config.model.hasApiKey);
   const gameOk = instance.exists;
@@ -286,14 +286,20 @@ ipcMain.handle('app:self-check', async (_event, config) => {
   const botRuntime = inspectBotRuntime(runtimeProject);
   const botProtocolOk = botRuntime.ok && botSupportsMinecraftVersion(runtimeProject, config.game.minecraftVersion);
   const template = resolveTemplate(config.server?.templatePath, [config.game.instancePath, instance.contentRoot].filter(Boolean), config.game);
-  const runtimeOk = Boolean(findNodeExecutable() && botRuntime.ok && fs.existsSync(path.join(template, 'libraries')) && findWinArgs(template));
+  const runtimeOk = Boolean(findNodeExecutable() && botRuntime.ok && fs.existsSync(path.join(template, 'libraries')) && findWinArgs(template, config.game));
+  const propertiesPath = template ? path.join(template, 'server.properties') : '';
+  let offlineServer = false;
+  try { offlineServer = /^\s*online-mode\s*=\s*false\s*$/mi.test(fs.readFileSync(propertiesPath, 'utf8')); } catch {}
   const javaSelection = selectJavaRuntime(scan, { ...config.game, javaMajor: config.game.javaMajor || instance.javaMajor });
   const personaNameOk = /^[A-Za-z0-9_]{1,16}$/.test(String(config.persona.name || ''));
   const portOk = Number.isInteger(Number(config.network.gameLocalPort)) && Number(config.network.gameLocalPort) >= 1 && Number(config.network.gameLocalPort) <= 65535
     && (!config.resources.voiceEnabled || (Number(config.network.voiceLocalPort) >= 1 && Number(config.network.voiceLocalPort) <= 65535 && Number(config.network.voiceLocalPort) !== Number(config.network.gameLocalPort)));
   const gamePortFree = serverManager.status().running || !portOk ? true : await isPortAvailable(Number(config.network.gameLocalPort));
+  let chineseRecognizer = false;
+  if (config.resources.voiceEnabled) { try { chineseRecognizer = await hasChineseRecognizer(); } catch {} }
   const checks = [
-    { id: 'runtime', title: 'minebot与服务端运行环境', ok: runtimeOk, status: runtimeOk ? 'pass' : 'error', blocking: true, detail: runtimeOk ? '已找到当前版本的服务端启动文件、AI 伙伴和内置 Node，不需要 Python' : '当前实例只包含客户端文件，未找到可复用的专用服务端 libraries/win_args.txt' },
+    { id: 'runtime', title: 'minebot与服务端运行环境', ok: runtimeOk, status: runtimeOk ? 'pass' : 'error', blocking: true, detail: runtimeOk ? '已找到匹配版本的服务端启动文件、AI 伙伴和内置 Node，不需要 Python' : '未找到匹配游戏与 Forge 版本的专用服务端 libraries/win_args.txt，请检查服务端目录和版本' },
+    { id: 'server-auth', title: '伙伴身份验证', ok: offlineServer, status: offlineServer ? 'pass' : 'error', blocking: true, detail: offlineServer ? '服务端允许当前伙伴使用的离线身份；只应邀请信任的玩家' : '当前伙伴不支持正版身份登录；请选择允许离线身份的服务端，并只邀请信任的玩家' },
     { id: 'bot-protocol', title: 'AI 伙伴游戏协议', ok: botProtocolOk, status: botProtocolOk ? 'pass' : 'error', blocking: true, detail: botProtocolOk ? `内置伙伴数据已支持 Minecraft ${config.game.minecraftVersion}` : `当前内置伙伴数据不支持 Minecraft ${config.game.minecraftVersion || '未知'}，已在启动前拦截` },
     { id: 'model', title: 'AI 模型', ok: modelOk, status: modelOk ? 'pass' : 'error', blocking: true, detail: config.model.channel === 'workbuddy' ? (wb?.signedIn ? (config.model.workbuddyModel ? 'WorkBuddy 已登录，模型已选择' : 'WorkBuddy 已登录，请选择一个模型') : wb?.reason || '请先登录 WorkBuddy') : (modelOk ? '自备 API 配置完整' : '请补全 API 地址、模型名称和 API Key') },
     { id: 'game', title: '用户自有游戏环境', ok: gameOk, status: gameOk ? 'pass' : 'error', blocking: true, detail: instance.exists ? `已识别本地实例：${instance.minecraftVersion || config.game.minecraftVersion || '版本未知'} · ${instance.modLoader || config.game.modLoader}；原目录只读` : (config.game.archivePath ? '压缩包尚未成功验证和解压，请重新选择' : '尚未选择 PCL2 实例或本地整合包') },
@@ -303,6 +309,7 @@ ipcMain.handle('app:self-check', async (_event, config) => {
     ...(config.resources.voiceEnabled
       ? [{ id: 'voice', title: '语音模组', ok: instance.voiceMods.length > 0, status: instance.voiceMods.length ? 'pass' : 'error', blocking: true, detail: instance.voiceMods.length ? `已发现 ${instance.voiceMods.join(', ')}` : '未找到 Simple Voice Chat；请自行安装匹配版本' }]
       : [{ id: 'voice', title: '语音模组（可选）', ok: true, status: instance.voiceMods.length ? 'optional' : 'optional', blocking: false, detail: instance.voiceMods.length ? `整合包已包含 ${instance.voiceMods.join(', ')}；当前未启用语音` : '当前未启用语音，不影响服务器构建' }]),
+    ...(config.resources.voiceEnabled ? [{ id: 'voice-recognizer', title: '中文语音识别', ok: chineseRecognizer, status: chineseRecognizer ? 'pass' : 'pending', blocking: false, detail: chineseRecognizer ? '已发现 Windows 中文识别器；仍需实际测试麦克风和语音网络' : '未检测到 Windows 中文识别器：伙伴可能无法理解语音，但文字和语音播报仍可尝试' }] : []),
     { id: 'persona', title: '伙伴人设', ok: Boolean(personaNameOk && config.persona.description), status: personaNameOk && config.persona.description ? 'pass' : 'error', blocking: true, detail: !personaNameOk ? '游戏名称必须是 1–16 位英文字母、数字或下划线' : (config.persona.description ? config.persona.name : '请填写伙伴人设') },
     { id: 'ports', title: '本地端口', ok: portOk, status: portOk ? 'pass' : 'error', blocking: true, detail: portOk ? `游戏 TCP ${config.network.gameLocalPort}${config.resources.voiceEnabled ? `；语音 UDP ${config.network.voiceLocalPort}` : ''}` : '端口必须在 1–65535 之间，且游戏与语音端口不能相同' },
     { id: 'port-free', title: '游戏端口可用性', ok: gamePortFree, status: gamePortFree ? 'pass' : 'error', blocking: true, detail: gamePortFree ? `TCP ${config.network.gameLocalPort} 可用` : `TCP ${config.network.gameLocalPort} 已被其他程序占用；请关闭旧服务器或更换端口` },
@@ -312,3 +319,4 @@ ipcMain.handle('app:self-check', async (_event, config) => {
   const pending = checks.filter((check) => check.status === 'pending');
   return { ready: blockingFailures.length === 0, checks, blockingFailures: blockingFailures.length, pending: pending.length, scannedAt: new Date().toISOString() };
 });
+

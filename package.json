@@ -1,13 +1,13 @@
 {
   "name": "minebot-desktop",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "minebot：智能世界伙伴与服务器管家",
   "main": "src/main.cjs",
   "scripts": {
     "start": "electron .",
     "check": "node --check src/main.cjs && node --check src/preload.cjs && node --check src/services/config-store.cjs && node --check src/services/detector.cjs && node --check src/services/archive-manager.cjs && node --check src/services/workbuddy.cjs && node --check src/services/build-planner.cjs && node --check src/services/server-manager.cjs && node --check src/services/bot-manager.cjs && node --check src/services/sakura-frp.cjs && node --check src/renderer/app.js && node --check src/renderer/build-chat.js",
-    "test": "node tests/config-store-smoke.cjs && node tests/detector-smoke.cjs && node tests/archive-manager-smoke.cjs && node tests/build-planner-smoke.cjs && node tests/workbuddy-smoke.cjs && node tests/server-manager-smoke.cjs && node tests/bot-manager-smoke.cjs && node tests/sakura-frp-smoke.cjs && node tests/system-voices-smoke.cjs",
+    "test": "node tests/config-store-smoke.cjs && node tests/detector-smoke.cjs && node tests/archive-manager-smoke.cjs && node tests/build-planner-smoke.cjs && node tests/workbuddy-smoke.cjs && node tests/server-manager-smoke.cjs && node tests/server-safety-smoke.cjs && node tests/bot-manager-smoke.cjs && node tests/sakura-frp-smoke.cjs && node tests/system-voices-smoke.cjs",
     "test:planner": "node tests/build-planner-smoke.cjs",
     "test:workbuddy": "node tests/workbuddy-smoke.cjs",
     "test:server": "node tests/server-manager-smoke.cjs",
@@ -74,7 +74,7 @@
   },
   "dependencies": {
     "@deepseek-ai/dsh-home-paths": "^0.2.1-rc.2",
-    "dsh-workbuddy-connect": "^0.7.9",
+    "dsh-workbuddy-connect": "0.7.9",
     "extract-zip": "2.0.1",
     "yauzl": "2.10.0"
   }

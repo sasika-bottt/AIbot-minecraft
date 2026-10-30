@@ -9,7 +9,7 @@ const executeButton = document.getElementById('execute');
 const modeButtons = [...document.querySelectorAll('[data-mode]')];
 
 const MODE_COPY = {
-  manual: '当前为全手动：方案会包含材料清单、采集、运输和逐块施工阶段，预计消耗更多时间与模型调用。',
+  manual: '当前为生存建造规划：伙伴整理材料、采集和施工方案；自动执行完整流程尚未实现。',
   admin: '当前为管理员模式：仅在备份、限定坐标范围并由你确认后，执行桥才可批量生成或修改建筑。'
 };
 
@@ -104,3 +104,4 @@ modeButtons.forEach((button) => button.addEventListener('click', async () => {
 
 window.whale.buildPlannerState().then(render).catch((error) => showError(error.message));
 input.focus();
+

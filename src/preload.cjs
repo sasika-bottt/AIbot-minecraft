@@ -29,8 +29,9 @@ contextBridge.exposeInMainWorld('whale', {
   botStatus: () => ipcRenderer.invoke('bot:status'),
   startBot: (config) => ipcRenderer.invoke('bot:start', config),
   stopBot: () => ipcRenderer.invoke('bot:stop'),
-  sakuraStatus: () => ipcRenderer.invoke('network:sakura-status'),
+  sakuraStatus: (network) => ipcRenderer.invoke('network:sakura-status', network),
   openSakura: () => ipcRenderer.invoke('network:sakura-open'),
   runSelfCheck: (config) => ipcRenderer.invoke('app:self-check', config),
   openPath: (target) => ipcRenderer.invoke('shell:open-path', target)
 });
+

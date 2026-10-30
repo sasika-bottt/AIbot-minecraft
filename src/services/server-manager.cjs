@@ -57,7 +57,7 @@ class ServerManager {
       const java = selectJavaRuntime(scan, config.game);
       if (!java.selected) throw new Error(`未在 Minecraft/PCL 已有运行时中找到 Java ${java.expectedMajor || '匹配版本'}。minebot不需要 Python 或 Node，也不会要求用户手填 Java 路径。`);
       scan.javaPath = java.selected.path;
-      argsFile = findWinArgs(prepared.directory);
+      argsFile = findWinArgs(prepared.directory, config.game);
       if (!argsFile) throw new Error('服务端模板不完整：缺少 Forge win_args.txt。');
     } catch (error) {
       this.state = { ...this.state, phase: 'failed', ready: false, message: error.message || String(error) };
@@ -107,8 +107,14 @@ class ServerManager {
         this.resolveStopWaiters();
         return;
       }
+      if (!wasReady) {
+        this.state = { ...this.state, phase: 'failed', ready: false, pid: null, exitCode: code, message: '服务器未完成启动，已保留工作目录供检查。' };
+        this.resolveStopWaiters();
+        return;
+      }
       this.state = { ...this.state, phase: 'syncing', ready: false, pid: null, exitCode: code, message: '服务器已安全保存，正在更新当日单人存档…' };
       try {
+        await fs.promises.writeFile(path.join(prepared.directory, '.minebot-clean-stop'), new Date().toISOString(), 'utf8');
         const mirror = await this.exportDailyWorld(prepared.directory, prepared.instanceRoot);
         this.state = { ...this.state, phase: 'stopped', message: `服务器已安全停止，单人存档已更新：${path.basename(mirror.path)}`, mirrorPath: mirror.path };
       } catch (error) {
@@ -139,12 +145,18 @@ class ServerManager {
     if (!worldPath || (!isInstanceWorld && !isWorkBuddyWorld) || !fs.existsSync(path.join(worldPath, 'level.dat'))) {
       throw new Error('请先在“游戏与整合包”页面选择一个有效的世界存档。');
     }
-    if (!fs.existsSync(path.join(template, 'libraries')) || !findWinArgs(template)) {
-      throw new Error('当前本地服务端环境不完整：缺少 libraries 或 Forge win_args.txt。');
+    if (!fs.existsSync(path.join(template, 'libraries')) || !findWinArgs(template, config.game)) {
+      throw new Error('服务端缺少与所选 Minecraft 和 Forge 版本匹配的 win_args.txt，请选择匹配版本的服务端。');
+    }
+    const serverProperties = path.join(template, 'server.properties');
+    const templateProperties = fs.existsSync(serverProperties) ? await fs.promises.readFile(serverProperties, 'utf8') : '';
+    if (!/^\s*online-mode\s*=\s*false\s*$/mi.test(templateProperties)) {
+      throw new Error('当前伙伴使用离线身份，无法加入启用正版验证的服务器。请使用允许离线身份的专用服务端，并仅邀请信任的玩家。');
     }
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const directory = path.join(this.root, 'builds', stamp);
-    await fs.promises.mkdir(directory, { recursive: true });
+    const buildsRoot = path.join(this.root, 'builds');
+    await fs.promises.mkdir(buildsRoot, { recursive: true });
+    const directory = await fs.promises.mkdtemp(path.join(buildsRoot, `${stamp}-`));
     const excluded = new Set(['world', 'logs', 'crash-reports', 'backups', 'mods', 'config', 'defaultconfigs', 'kubejs', 'scripts']);
     await fs.promises.cp(template, directory, {
       recursive: true,
@@ -155,11 +167,29 @@ class ServerManager {
         return !excluded.has(first) && !['server_console.log', 'server-output.log'].includes(path.basename(source));
       }
     });
-    await fs.promises.cp(worldPath, path.join(directory, 'world'), { recursive: true });
+    let worldSource = worldPath;
+    const priorBuilds = (await fs.promises.readdir(buildsRoot, { withFileTypes: true }))
+      .filter((entry) => entry.isDirectory() && entry.name !== path.basename(directory))
+      .map((entry) => path.join(buildsRoot, entry.name)).sort().reverse();
+    for (const previous of priorBuilds) {
+      let info;
+      try { info = JSON.parse(await fs.promises.readFile(path.join(previous, 'build-info.json'), 'utf8')); } catch { info = null; }
+      if (info && samePath(info.sourceInstance || '', instanceRoot) && samePath(info.sourceWorld || '', worldPath)) {
+        const previousWorld = path.join(previous, 'world');
+        if (fs.existsSync(path.join(previousWorld, 'level.dat'))) {
+          if (!fs.existsSync(path.join(previous, '.minebot-clean-stop'))) {
+            throw new Error(`上次服务器未确认安全停服，已保留世界：${previousWorld}。请先备份并检查该目录，再选择需要使用的存档。`);
+          }
+          worldSource = previousWorld;
+          break;
+        }
+      }
+    }
+    await fs.promises.cp(worldSource, path.join(directory, 'world'), { recursive: true });
     const excludedMods = [];
-    const modsSource = path.join(instanceRoot, 'mods');
     const modsTarget = path.join(directory, 'mods');
-    if (fs.existsSync(modsSource)) {
+    for (const modsSource of [...new Set([path.join(template, 'mods'), path.join(instanceRoot, 'mods')])]) {
+      if (!fs.existsSync(modsSource)) continue;
       await fs.promises.mkdir(modsTarget, { recursive: true });
       for (const entry of await fs.promises.readdir(modsSource, { withFileTypes: true })) {
         if (!entry.isFile() || !entry.name.toLowerCase().endsWith('.jar')) continue;
@@ -168,12 +198,14 @@ class ServerManager {
           excludedMods.push({ name: entry.name, reason });
           continue;
         }
-        await fs.promises.copyFile(path.join(modsSource, entry.name), path.join(modsTarget, entry.name));
+        const destination = path.join(modsTarget, entry.name);
+        if (!fs.existsSync(destination)) await fs.promises.copyFile(path.join(modsSource, entry.name), destination);
       }
     }
     for (const folder of ['config', 'defaultconfigs', 'kubejs', 'scripts']) {
-      const source = path.join(instanceRoot, folder);
-      if (fs.existsSync(source)) await fs.promises.cp(source, path.join(directory, folder), { recursive: true, force: true });
+      for (const source of [...new Set([path.join(instanceRoot, folder), path.join(template, folder)])]) {
+        if (fs.existsSync(source)) await fs.promises.cp(source, path.join(directory, folder), { recursive: true, force: true });
+      }
     }
     await setPropertyOverride(
       path.join(directory, 'config', 'modernfix-mixins.properties'),
@@ -286,23 +318,29 @@ class ServerManager {
 
   async executeAdminCommands(commands) {
     if (!this.child || this.child.exitCode !== null || !this.state.ready) throw new Error('服务器尚未就绪，不能执行管理员施工。');
+    const child = this.child;
     const validated = validateAdminCommands(commands);
     const world = path.join(this.state.serverDirectory, 'world');
     if (!fs.existsSync(path.join(world, 'level.dat'))) throw new Error('当前服务器世界不完整，已拒绝执行。');
     const backup = path.join(this.state.serverDirectory, 'backups', `admin-${formatLocalTimestamp(new Date())}`);
-    this.child.stdin.write('save-off\n');
-    this.child.stdin.write('save-all flush\n');
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    child.stdin.write('save-off\n');
     try {
+      const saved = waitForServerOutput(child, /Saved the game|Saved the world/i, 30000);
+      child.stdin.write('save-all flush\n');
+      await saved;
       await fs.promises.mkdir(path.dirname(backup), { recursive: true });
-      await fs.promises.cp(world, backup, { recursive: true, errorOnExist: true, force: false });
+      await fs.promises.cp(world, backup, {
+        recursive: true, errorOnExist: true, force: false,
+        filter: (source) => path.relative(world, source).toLowerCase() !== 'session.lock'
+      });
       if (!fs.existsSync(path.join(backup, 'level.dat'))) throw new Error('施工前备份校验失败。');
     } finally {
-      this.child.stdin.write('save-on\n');
+      if (child.stdin?.writable) child.stdin.write('save-on\n');
     }
-    for (const command of validated) this.child.stdin.write(`${command.replace(/^\//, '')}\n`);
-    this.child.stdin.write('save-all flush\n');
-    return { ok: true, commandCount: validated.length, backupPath: backup, message: `已执行 ${validated.length} 条受控建造命令；施工前备份已保存。` };
+    if (this.child !== child || child.exitCode !== null || !child.stdin?.writable) throw new Error('服务器已停止，备份保留，未执行施工命令。');
+    for (const command of validated) child.stdin.write(`${command.replace(/^\//, '')}\n`);
+    child.stdin.write('save-all flush\n');
+    return { ok: true, commandCount: validated.length, backupPath: backup, message: `已提交 ${validated.length} 条建造命令；请检查服务器日志确认每条命令的结果。施工前备份已保存。` };
   }
 
   async exportDailyWorld(serverDirectory, instancePath, now = new Date()) {
@@ -311,13 +349,25 @@ class ServerManager {
     if (!fs.existsSync(path.join(source, 'level.dat'))) throw new Error('服务器世界不完整，缺少 level.dat。');
     if (!fs.existsSync(savesRoot)) throw new Error('PCL2 实例的 saves 目录不存在。');
     const dateName = formatLocalDate(now);
-    const targetName = `境伴-${dateName}`;
-    const target = path.join(savesRoot, targetName);
+    const baseName = `境伴-${dateName}`;
+    let info = {};
+    try { info = JSON.parse(await fs.promises.readFile(path.join(serverDirectory, 'build-info.json'), 'utf8')); } catch {}
+    const lineage = crypto.createHash('sha256').update(path.resolve(String(info.sourceWorld || source)).toLowerCase()).digest('hex');
+    let targetName = baseName;
+    let target = path.join(savesRoot, targetName);
+    for (let suffix = 2; fs.existsSync(target); suffix++) {
+      let marker;
+      try { marker = JSON.parse(await fs.promises.readFile(path.join(target, '.minebot-export.json'), 'utf8')); } catch {}
+      if (marker?.lineage === lineage) break;
+      targetName = `${baseName}-${suffix}`;
+      target = path.join(savesRoot, targetName);
+    }
     const stamp = formatLocalTimestamp(now);
     const stage = path.join(savesRoot, `.${targetName}.sync-${stamp}`);
     const previous = path.join(savesRoot, `.${targetName}.previous-${stamp}`);
     await fs.promises.cp(source, stage, { recursive: true, errorOnExist: true, force: false });
     if (!fs.existsSync(path.join(stage, 'level.dat'))) throw new Error('单人存档临时副本校验失败。');
+    await fs.promises.writeFile(path.join(stage, '.minebot-export.json'), JSON.stringify({ lineage }), 'utf8');
     await renameWorldDisplayName(path.join(stage, 'level.dat'), targetName);
     let previousPath = '';
     try {
@@ -335,6 +385,19 @@ class ServerManager {
     }
     return { path: target };
   }
+}
+
+function waitForServerOutput(child, pattern, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    let buffer = '';
+    const streams = [child.stdout, child.stderr].filter(Boolean);
+    const cleanup = () => { clearTimeout(timer); for (const stream of streams) stream.removeListener('data', onData); child.removeListener('exit', onExit); };
+    const onData = (chunk) => { buffer = (buffer + String(chunk)).slice(-16000); if (pattern.test(buffer)) { cleanup(); resolve(); } };
+    const onExit = () => { cleanup(); reject(new Error('等待服务器保存时服务器已退出，已取消施工。')); };
+    const timer = setTimeout(() => { cleanup(); reject(new Error('服务器未确认保存完成，已取消施工；请查看日志。')); }, timeoutMs);
+    for (const stream of streams) stream.on('data', onData);
+    child.once('exit', onExit);
+  });
 }
 
 async function renameWorldDisplayName(levelPath, displayName) {
@@ -394,10 +457,14 @@ function offlinePlayerUuid(name) {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
-function findWinArgs(directory) {
+function findWinArgs(directory, game = {}) {
   const forgeRoot = path.join(directory, 'libraries', 'net', 'minecraftforge', 'forge');
   if (!fs.existsSync(forgeRoot)) return '';
   for (const version of fs.readdirSync(forgeRoot)) {
+    const mc = String(game.minecraftVersion || '').trim();
+    const loader = String(game.loaderVersion || '').trim().replace(/^forge-/i, '').replace(mc ? new RegExp(`^${mc.replace(/\./g, '\\.')}[-_]`) : /^$/, '');
+    if (mc && !version.startsWith(`${mc}-`)) continue;
+    if (loader && version !== `${mc}-${loader}` && version !== loader) continue;
     const candidate = path.join(forgeRoot, version, 'win_args.txt');
     if (fs.existsSync(candidate)) return candidate;
   }
@@ -407,7 +474,7 @@ function findWinArgs(directory) {
 function resolveTemplate(configured = '', localCandidates = [], game = {}) {
   const local = [configured, ...localCandidates, ...localCandidates.map((candidate) => path.dirname(candidate))]
     .filter(Boolean)
-    .find((candidate) => fs.existsSync(path.join(candidate, 'libraries')) && Boolean(findWinArgs(candidate)));
+    .find((candidate) => fs.existsSync(path.join(candidate, 'libraries')) && Boolean(findWinArgs(candidate, game)));
   if (local) return local;
   const bundled = [
     process.resourcesPath && path.join(process.resourcesPath, 'runtime', 'server-template'),
@@ -532,3 +599,4 @@ function parseCoordinate(value) {
 }
 
 module.exports = { ServerManager, SUPPORTED_RUNTIME, CLIENT_ONLY_MOD_FRAGMENTS, clientOnlyModReason, setPropertyOverride, resolveTemplate, findWinArgs, assessRuntimeCompatibility, selectJavaRuntime, isPortAvailable, diagnoseServerOutput, validateAdminCommands, updateProperties, renameWorldDisplayName, offlinePlayerUuid };
+

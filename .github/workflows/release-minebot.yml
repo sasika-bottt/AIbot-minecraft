@@ -1,7 +1,7 @@
-name: Build minebot 1.0.0
+name: Build minebot 1.0.1
 on:
   push:
-    branches: [minebot-release-1.0.0]
+    branches: [minebot-release-1.0.1]
   workflow_dispatch:
 permissions:
   contents: write
@@ -25,6 +25,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create minebot-v1.0.0 dist/minebot-setup-1.0.0.exe --target "$env:GITHUB_SHA" --title "minebot 1.0.0" --notes "Windows 安装包。需要已登录的 WorkBuddy 客户端，用户自行提供游戏、Java、世界存档及兼容的 Forge 服务端整合包。不同模组环境可能需要调整。"
+          gh release create minebot-v1.0.1 dist/minebot-setup-1.0.1.exe --target "$env:GITHUB_SHA" --title "minebot 1.0.1 测试版" --prerelease --notes "修复世界进度接续、服务端模组配置保留和施工备份。需要已登录的 WorkBuddy 客户端及用户自己的游戏、Java、世界存档和兼容 Forge 服务端。此版本仍需更多新用户及语音联机测试；游戏内皮肤同步和全自动生存建造尚未实现。"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 

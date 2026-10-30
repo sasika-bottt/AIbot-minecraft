@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('tts', 'stt', 'list')]
+    [ValidateSet('tts', 'stt', 'list', 'recognizers')]
     [string]$Mode,
     [string]$TextBase64 = '',
     [string]$InputPath = '',
@@ -13,6 +13,11 @@ $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Speech
 
 try {
+    if ($Mode -eq 'recognizers') {
+        $available = @([System.Speech.Recognition.SpeechRecognitionEngine]::InstalledRecognizers() | Where-Object { $_.Culture.Name -eq 'zh-CN' }).Count -gt 0
+        @{ ok = $true; available = $available } | ConvertTo-Json -Compress
+        exit 0
+    }
     if ($Mode -eq 'list') {
         $synth = New-Object System.Speech.Synthesis.SpeechSynthesizer
         try {
@@ -91,3 +96,4 @@ try {
     @{ ok = $false; error = $_.Exception.Message } | ConvertTo-Json -Compress
     exit 1
 }
+

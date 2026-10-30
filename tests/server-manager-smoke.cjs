@@ -13,6 +13,7 @@ async function main() {
     const world = path.join(instance, 'saves', '测试世界');
     fs.mkdirSync(path.join(template, 'libraries', 'net', 'minecraftforge', 'forge', '1.20.1-47.4.23'), { recursive: true });
     fs.mkdirSync(path.join(template, 'mods'), { recursive: true });
+    fs.mkdirSync(path.join(template, 'config'), { recursive: true });
     fs.mkdirSync(path.join(instance, 'mods'), { recursive: true });
     fs.mkdirSync(path.join(instance, 'config'), { recursive: true });
     fs.mkdirSync(world, { recursive: true });
@@ -23,6 +24,8 @@ async function main() {
     fs.writeFileSync(path.join(template, 'ops.json'), JSON.stringify([{ uuid: offlinePlayerUuid('OldAdmin'), name: 'OldAdmin', level: 4 }]));
     fs.writeFileSync(path.join(world, 'level.dat'), 'world-data');
     fs.writeFileSync(path.join(instance, 'mods', 'user-owned-mod.jar'), 'mod-data');
+    fs.writeFileSync(path.join(template, 'mods', 'server-only.jar'), 'server-mod');
+    fs.writeFileSync(path.join(template, 'config', 'server-only.toml'), 'server-config');
     fs.writeFileSync(path.join(instance, 'mods', 'oculus-mc1.20.1-1.8.0.jar'), 'client-only-data');
     fs.writeFileSync(path.join(instance, 'config', 'modernfix-mixins.properties'), '# generated\n');
     const manager = new ServerManager(path.join(root, 'profile'), { systemScan: async () => ({}) });
@@ -37,6 +40,8 @@ async function main() {
     assert.deepEqual(operators.map((entry) => entry.name), ['SamplePlayer', 'friend']);
     assert.equal(operators[0].level, 4);
     assert.equal(fs.readFileSync(path.join(result.directory, 'mods', 'user-owned-mod.jar'), 'utf8'), 'mod-data');
+    assert.equal(fs.readFileSync(path.join(result.directory, 'mods', 'server-only.jar'), 'utf8'), 'server-mod');
+    assert.equal(fs.readFileSync(path.join(result.directory, 'config', 'server-only.toml'), 'utf8'), 'server-config');
     assert.equal(fs.existsSync(path.join(result.directory, 'mods', 'oculus-mc1.20.1-1.8.0.jar')), false);
     assert.deepEqual(result.excludedMods.map((entry) => entry.name), ['oculus-mc1.20.1-1.8.0.jar']);
     const buildInfo = JSON.parse(fs.readFileSync(path.join(result.directory, 'build-info.json'), 'utf8'));
@@ -46,6 +51,23 @@ async function main() {
     assert.match(properties, /server-port=25570/);
     assert.match(properties, /enable-rcon=false/);
     assert.match(properties, /level-name=world/);
+    fs.writeFileSync(path.join(result.directory, 'world', 'level.dat'), 'server-progress');
+    const continueConfig = { game: { instancePath: instance, worldPath: world }, network: { gameLocalPort: 25570 }, server: { templatePath: template, lastBuildDirectory: result.directory } };
+    await assert.rejects(manager.prepareWorkspace(continueConfig), /未确认安全停服/);
+    fs.writeFileSync(path.join(result.directory, '.minebot-clean-stop'), 'saved');
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    const continued = await manager.prepareWorkspace(continueConfig);
+    assert.equal(fs.readFileSync(path.join(continued.directory, 'world', 'level.dat'), 'utf8'), 'server-progress');
+    assert.equal(fs.readFileSync(path.join(world, 'level.dat'), 'utf8'), 'world-data');
+    const occupied = path.join(instance, 'saves', '境伴-2026-10-26');
+    fs.mkdirSync(occupied);
+    fs.writeFileSync(path.join(occupied, 'level.dat'), 'another-world');
+    const protectedMirror = await manager.exportDailyWorld(continued.directory, instance, new Date(2026, 9, 26, 12));
+    assert.notEqual(protectedMirror.path, occupied);
+    assert.equal(fs.readFileSync(path.join(occupied, 'level.dat'), 'utf8'), 'another-world');
+    fs.writeFileSync(path.join(template, 'server.properties'), 'online-mode=true\n');
+    await assert.rejects(manager.prepareWorkspace({ game: { instancePath: instance, worldPath: world }, network: { gameLocalPort: 25570 }, server: { templatePath: template } }), /无法加入启用正版验证/);
+    fs.writeFileSync(path.join(template, 'server.properties'), 'server-port=25565\nenable-rcon=true\nonline-mode=false\nlevel-name=old\n');
     const workBuddyWorld = path.join(template, 'world');
     fs.mkdirSync(workBuddyWorld, { recursive: true });
     fs.writeFileSync(path.join(workBuddyWorld, 'level.dat'), 'newer-workbuddy-world');
@@ -85,3 +107,4 @@ main().catch((error) => {
   console.error(error);
   process.exitCode = 1;
 });
+

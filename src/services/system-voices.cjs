@@ -31,6 +31,11 @@ async function listSystemVoices() {
   return Array.isArray(result.voices) ? result.voices.filter((v) => v && typeof v.name === 'string') : [];
 }
 
+async function hasChineseRecognizer() {
+  const result = await invokeVoice(['-Mode', 'recognizers']);
+  return Boolean(result.available);
+}
+
 async function previewSystemVoice(name) {
   const voices = await listSystemVoices();
   if (name && !voices.some((voice) => voice.name === name)) throw new Error('该声音当前未安装，请刷新声音列表。');
@@ -46,4 +51,5 @@ async function previewSystemVoice(name) {
   }
 }
 
-module.exports = { listSystemVoices, previewSystemVoice, voiceScript };
+module.exports = { listSystemVoices, previewSystemVoice, hasChineseRecognizer, voiceScript };
+
