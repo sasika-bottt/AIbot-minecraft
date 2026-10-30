@@ -14,6 +14,7 @@ class BotManager {
     this.output = null;
     this.startupTimer = null;
     this.recentOutput = '';
+    this.mindserverPort = 0;
     this.state = { phase: 'idle', running: false, ready: false, pid: null, name: '', message: '伙伴尚未启动', logPath: '' };
   }
 
@@ -64,6 +65,7 @@ class BotManager {
     const profilePath = path.join(this.root, 'active-profile.json');
     await writeJsonAtomic(profilePath, profile);
     const mindserverPort = await findAvailablePort();
+    this.mindserverPort = mindserverPort;
     const logPath = path.join(this.root, 'bot-output.log');
     this.output = fs.createWriteStream(logPath, { flags: 'a' });
     this.recentOutput = '';
@@ -113,6 +115,7 @@ class BotManager {
       const diagnosis = diagnoseBotOutput(this.recentOutput);
       this.state = { ...this.state, phase: intentional ? 'stopped' : 'failed', running: false, ready: false, pid: null, message: intentional ? '伙伴已退出游戏。' : (diagnosis || `伙伴进程已退出，退出码 ${code}。请打开伙伴日志查看详情。`) };
       this.child = null;
+      this.mindserverPort = 0;
       this.finishOutput();
       this.workbuddy.stopGateway().catch(() => {});
     });
@@ -128,6 +131,24 @@ class BotManager {
       this.finishOutput();
       throw error;
     }
+  }
+
+  async discussPlan(message) {
+    if (!this.child || this.child.exitCode !== null || !this.state.ready || !this.mindserverPort) throw new Error('请先启动服务器并等待伙伴进入游戏。');
+    const text = String(message || '').trim();
+    if (!text || text.length > 6000) throw new Error('建造需求为空或过长。');
+    const { io } = require(path.join(this.project, 'node_modules', 'socket.io-client'));
+    const socket = io(`http://localhost:${this.mindserverPort}`, { reconnection: false, timeout: 5000, transports: ['websocket'] });
+    try {
+      await new Promise((resolve, reject) => { socket.once('connect', resolve); socket.once('connect_error', reject); });
+      const reply = await new Promise((resolve, reject) => socket.timeout(65000).emit('minebot-discuss-plan', this.state.name, text, (error, result) => {
+        if (error) return reject(new Error('等待游戏伙伴回复超时。'));
+        if (!result?.ok) return reject(new Error(result?.message || '游戏伙伴未能讨论方案。'));
+        resolve(String(result.reply || ''));
+      }));
+      if (!reply.trim()) throw new Error('游戏伙伴没有返回内容。');
+      return reply;
+    } finally { socket.disconnect(); }
   }
 
   async stop() {
@@ -226,3 +247,4 @@ async function writeJsonAtomic(target, value) {
 }
 
 module.exports = { BotManager, findNodeExecutable, findBundledProject, inspectBotRuntime, botSupportsMinecraftVersion, findAvailablePort, diagnoseBotOutput, buildPersonaPrompt };
+

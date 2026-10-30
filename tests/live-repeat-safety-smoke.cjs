@@ -44,6 +44,9 @@ async function main() {
       const dir = server.status().serverDirectory;
       const marker = path.join(dir, 'world', 'minebot-audit-marker.txt');
       if (n === 0) {
+        const discussion = await bot.discussPlan('请讨论：在平地建一个三乘三的木屋，需要考虑哪些材料？本次只讨论，不要施工。');
+        if (!discussion || /![A-Za-z_]+/.test(discussion)) throw new Error('伙伴未返回安全的纯文字讨论');
+        console.log('游戏伙伴对建造需求的只读讨论已通过');
         const construction = await server.executeAdminCommands(['/setblock 0 100 0 minecraft:stone']);
         if (!fs.existsSync(path.join(construction.backupPath, 'level.dat'))) throw new Error('施工备份未生成');
         await waitFor(() => /Changed the block at|Set block at/i.test(server.recentOutput), '施工命令结果', 15000);

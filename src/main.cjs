@@ -1,6 +1,6 @@
 const path = require('node:path');
 const fs = require('node:fs');
-const { app, BrowserWindow, ipcMain, dialog, safeStorage, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, safeStorage, shell, nativeImage } = require('electron');
 const { ConfigStore } = require('./services/config-store.cjs');
 const { WorkBuddyService } = require('./services/workbuddy.cjs');
 const { BuildPlanner } = require('./services/build-planner.cjs');
@@ -10,6 +10,7 @@ const { SakuraFrpService } = require('./services/sakura-frp.cjs');
 const { systemScan, inspectInstance } = require('./services/detector.cjs');
 const { ArchiveManager } = require('./services/archive-manager.cjs');
 const { listSystemVoices, previewSystemVoice, hasChineseRecognizer } = require('./services/system-voices.cjs');
+const { validateSkin, exportSkin } = require('./services/skin-export.cjs');
 
 let mainWindow;
 let configStore;
@@ -198,6 +199,18 @@ ipcMain.handle('skin:read', (_event, target) => {
   return `data:image/png;base64,${fs.readFileSync(selected).toString('base64')}`;
 });
 
+ipcMain.handle('skin:export-local', async (_event, source, playerName) => {
+  const data = validateSkin(source, playerName);
+  if (nativeImage.createFromBuffer(data).isEmpty()) throw new Error('皮肤文件损坏，无法打开。');
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: '导出给 CustomSkinLoader 使用',
+    defaultPath: path.join(app.getPath('downloads'), `${playerName}.png`),
+    filters: [{ name: 'Minecraft 皮肤', extensions: ['png'] }]
+  });
+  if (result.canceled || !result.filePath) return { canceled: true };
+  return { canceled: false, path: exportSkin(source, playerName, result.filePath) };
+});
+
 ipcMain.handle('skin:save-generated', (_event, dataUrl) => {
   const match = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl || ''));
   if (!match) throw new Error('生成的皮肤数据无效。');
@@ -224,6 +237,19 @@ ipcMain.handle('build:clear', () => buildPlanner.clear());
 ipcMain.handle('build:admin-execute', async () => {
   const commands = buildPlanner.adminCommands();
   return serverManager.executeAdminCommands(commands);
+});
+ipcMain.handle('build:discuss-with-agent', async () => {
+  const state = buildPlanner.load();
+  if (state.mode !== 'manual') throw new Error('请先切换到生存建造规划。');
+  const user = [...state.messages].reverse().find((message) => message.role === 'user');
+  const plan = [...state.messages].reverse().find((message) => message.role === 'assistant');
+  if (!user) throw new Error('请先在窗口中输入建造需求。');
+  const text = `玩家需求：${user.content}\n\n已有规划：${plan?.content || '尚未生成'}`.slice(0, 6000);
+  const reply = await botManager.discussPlan(text);
+  const current = buildPlanner.load();
+  if (current.mode !== 'manual') throw new Error('模式已切换，请回到生存规划查看伙伴回复。');
+  current.messages.push({ role: 'assistant', content: `【游戏伙伴】${reply}`, at: new Date().toISOString() });
+  return buildPlanner.save(current);
 });
 ipcMain.handle('server:status', () => serverManager.status());
 ipcMain.handle('server:set-administrator', async (_event, rawName, enabled) => {

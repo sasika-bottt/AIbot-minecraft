@@ -31,7 +31,7 @@ try {
   const packedPaths = asar.listPackage(archive);
   assert.ok(!packedPaths.some((entry) => /whale-skin\.png$/i.test(entry)), '不得打包个人伙伴皮肤');
   const appSources = packedPaths.filter((entry) => /\.(cjs|js|html|json)$/i.test(entry) && /^\\src\\/i.test(entry));
-  for (const relative of ['src\\services\\config-store.cjs', 'src\\services\\detector.cjs', 'src\\services\\bot-manager.cjs', 'src\\services\\server-manager.cjs', 'src\\renderer\\app.js']) {
+  for (const relative of ['src\\services\\config-store.cjs', 'src\\services\\detector.cjs', 'src\\services\\bot-manager.cjs', 'src\\services\\server-manager.cjs', 'src\\services\\skin-export.cjs', 'src\\renderer\\app.js']) {
     assert.deepEqual(asar.extractFile(archive, relative), fs.readFileSync(path.join(__dirname, '..', relative)), `打包源码不是最新版本：${relative}`);
   }
   const forbidden = ['EXAMPLE_PERSONAL_MARKER'];
@@ -55,3 +55,4 @@ try {
 } finally {
   fs.rmSync(root, { recursive: true, force: true });
 }
+

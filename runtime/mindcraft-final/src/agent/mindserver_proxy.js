@@ -69,6 +69,11 @@ class MindServerProxy {
             }
         });
 
+        this.socket.on('minebot-discuss-plan', async (message, callback) => {
+            try { callback({ ok: true, reply: await this.agent.discussBuildPlan(String(message || '')) }); }
+            catch (error) { callback({ ok: false, message: String(error.message || error) }); }
+        });
+
         this.socket.on('get-full-state', (callback) => {
             try {
                 const state = getFullState(this.agent);
@@ -134,3 +139,4 @@ export function sendBotChatToServer(agentName, json) {
 export function sendOutputToServer(agentName, message) {
     serverProxy.getSocket().emit('bot-output', agentName, message);
 }
+

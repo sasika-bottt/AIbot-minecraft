@@ -6,6 +6,7 @@ const statusNode = document.getElementById('status');
 const errorNode = document.getElementById('error');
 const modeNote = document.getElementById('mode-note');
 const executeButton = document.getElementById('execute');
+const discussButton = document.getElementById('discuss-agent');
 const modeButtons = [...document.querySelectorAll('[data-mode]')];
 
 const MODE_COPY = {
@@ -22,6 +23,7 @@ function render(state) {
   modeButtons.forEach((button) => button.classList.toggle('selected', button.dataset.mode === state.mode));
   modeNote.textContent = MODE_COPY[state.mode] || MODE_COPY.manual;
   executeButton.classList.toggle('hidden', state.mode !== 'admin');
+  discussButton.classList.toggle('hidden', state.mode !== 'manual');
   messagesNode.replaceChildren();
   if (!state.messages.length) {
     const empty = document.createElement('div');
@@ -78,6 +80,15 @@ clearButton.addEventListener('click', async () => {
   if (!window.confirm('确定清空当前建造对话吗？')) return;
   showError();
   render(await window.whale.clearBuildConversation());
+});
+discussButton.addEventListener('click', async () => {
+  showError();
+  discussButton.disabled = true; sendButton.disabled = true; clearButton.disabled = true;
+  modeButtons.forEach((button) => { button.disabled = true; });
+  statusNode.textContent = '正在请游戏中的伙伴讨论；不会自动执行施工';
+  try { render(await window.whale.discussWithAgent()); }
+  catch (error) { showError(error.message || String(error)); }
+  finally { discussButton.disabled = false; sendButton.disabled = false; clearButton.disabled = false; modeButtons.forEach((button) => { button.disabled = false; }); }
 });
 executeButton.addEventListener('click', async () => {
   if (!window.confirm('minebot将先保存完整世界备份，再执行方案中列出的受控建造命令。确认继续吗？')) return;

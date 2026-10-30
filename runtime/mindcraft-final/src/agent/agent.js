@@ -264,6 +264,23 @@ export class Agent {
         convoManager.endAllConversations();
     }
 
+    async discussBuildPlan(message) {
+        if (!message || message.length > 6000) throw new Error('建造需求为空或过长。');
+        if (this._buildDiscussionBusy || !this.isIdle()) throw new Error('伙伴正在执行任务，请稍后再试。');
+        this._buildDiscussionBusy = true;
+        try {
+            const prompt = `玩家在配置器中提交了建筑需求或方案。请结合当前对话，只用自然语言讨论可行性和材料，不要执行任何命令或声称已经施工：\n${message}`;
+            await this.history.add('system', prompt);
+            const raw = String(await this.prompter.promptConvo(this.history.getHistory()));
+            const commandAt = raw.indexOf('!');
+            const response = (commandAt < 0 ? raw : raw.slice(0, commandAt)).trim();
+            if (!response) throw new Error('伙伴没有返回可显示的讨论内容，请重试。');
+            await this.history.add(this.name, response);
+            this.history.save();
+            return response.slice(0, 6000);
+        } finally { this._buildDiscussionBusy = false; }
+    }
+
     async handleMessage(source, message, max_responses=null) {
         await this.checkTaskDone();
         if (!source || !message) {
@@ -585,3 +602,4 @@ export class Agent {
         serverProxy.shutdown();
     }
 }
+

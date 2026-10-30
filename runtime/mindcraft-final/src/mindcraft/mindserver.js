@@ -267,6 +267,15 @@ export function createMindServer(host_public = false, port = 8080) {
 			}
 		});
 
+        socket.on('minebot-discuss-plan', (agentName, message, callback) => {
+            const agent = agent_connections[agentName];
+            if (typeof callback !== 'function') return;
+            if (!agent?.in_game || !agent.socket?.connected) return callback({ ok: false, message: '游戏伙伴尚未进入服务器。' });
+            agent.socket.timeout(60000).emit('minebot-discuss-plan', message, (error, result) => {
+                callback(error ? { ok: false, message: '等待伙伴回复超时。' } : result);
+            });
+        });
+
         socket.on('bot-output', (agentName, message) => {
             io.emit('bot-output', agentName, message);
         });
@@ -343,3 +352,4 @@ function removeListener(listener_socket) {
 export const getIO = () => io;
 export const getServer = () => server;
 export const numStateListeners = () => agent_listeners.length;
+
