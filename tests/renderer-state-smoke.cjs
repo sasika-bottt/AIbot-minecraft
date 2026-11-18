@@ -56,6 +56,15 @@ async function main() {
   await vm.runInContext('refreshRuntimeStatus()', context);
   assert.equal(vm.runInContext('state.serverStatus.ready', context), true);
   assert.equal(vm.runInContext('state.statusError', context), '');
+  const visualStates = vm.runInContext(`[
+    checkVisualState({status:'optional', blocking:false}),
+    checkVisualState({status:'working'}),
+    checkVisualState({status:'pending', blocking:true}),
+    checkVisualState({status:'choice', needsChoice:true}),
+    checkVisualState({status:'pass', ok:true}),
+    checkVisualState({status:'error', blocking:true})
+  ]`, context);
+  assert.deepEqual([...visualStates], ['waiting', 'working', 'repairable', 'choice', 'success', 'failure'], '自检状态必须映射为互不混淆的视觉语义');
   console.log('renderer navigation and draft preservation smoke test passed');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

@@ -73,7 +73,15 @@ function renderSteps() {
 
 function channelCard(id, icon, title, text) {
   const selected = state.config.model.channel === id;
-  return `<article class="card selectable ${selected ? 'selected' : ''}" data-channel="${id}"><div class="icon-box">${icon}</div><h2>${title}</h2><p>${text}</p></article>`;
+  return `<button type="button" class="card selectable choice-card ${selected ? 'selected' : ''}" data-channel="${id}" aria-pressed="${selected}"><span class="icon-box">${icon}</span><span class="choice-copy"><strong>${title}</strong><small>${text}</small></span></button>`;
+}
+
+function renderSegmentedChoice({ label, name, value, options }) {
+  return `<section class="choice-section" aria-label="${esc(label)}"><div class="choice-heading"><span>${esc(label)}</span><small>选择一项后显示对应配置</small></div><div class="ui-segment" role="group" aria-label="${esc(label)}">${options.map((option) => `<button type="button" data-${name}="${esc(option.id)}" aria-pressed="${option.id === value}"><span class="ui-segment-icon">${esc(option.icon)}</span><span class="ui-segment-copy"><strong>${esc(option.label)}</strong><small>${esc(option.description)}</small></span></button>`).join('')}</div></section>`;
+}
+
+function renderEmptyState({ icon, title, description, actionId, actionLabel }) {
+  return `<div class="ui-empty"><span class="ui-empty-icon">${esc(icon)}</span><strong>${esc(title)}</strong><small>${esc(description)}</small>${actionId ? `<button type="button" class="button ghost" id="${esc(actionId)}">${esc(actionLabel)}</button>` : ''}</div>`;
 }
 
 function renderModel() {
@@ -83,11 +91,18 @@ function renderModel() {
     : '<span class="badge">等待检测</span>';
   let detail = '';
   if (m.channel === 'workbuddy') {
-    detail = `<div class="card"><div class="inline"><div><h2>WorkBuddy 积分通道</h2><p>使用你自己的 WorkBuddy 账号和积分。配置器不会显示或明文保存登录令牌。</p>${wbInfo}</div><div class="inline"><button class="button ghost" id="open-wb">打开 WorkBuddy 登录</button><button class="button ghost" id="detect-wb">检测账号</button></div></div><div class="field"><label>选择模型</label><div class="inline"><select id="wb-model"><option value="">${state.wbModels.length ? '请选择一个模型' : '请先获取模型列表'}</option>${state.wbModels.map((x) => `<option value="${esc(x.id)}" ${x.id === m.workbuddyModel ? 'selected' : ''}>${esc(x.name)} · ${esc(x.credits)}</option>`).join('')}</select><button class="button ghost" id="load-models">获取模型</button></div></div><div class="model-list">${state.wbModels.slice(0, 12).map((x) => `<div class="model-row ${x.id === m.workbuddyModel ? 'selected' : ''}" data-model="${esc(x.id)}"><div><strong>${esc(x.name)}</strong><small>${esc(x.id)} · 上下文 ${Math.round((x.contextWindow || 0)/1000)}K</small></div><div><span class="badge ${x.free ? 'good' : ''}">${esc(x.credits)}</span>${x.supportsImages ? '<span class="badge">视觉</span>' : ''}</div></div>`).join('')}</div></div>`;
+    const modelChooser = state.wbModels.length
+      ? `<div class="field"><label>选择模型</label><div class="inline"><select id="wb-model"><option value="">请选择一个模型</option>${state.wbModels.map((x) => `<option value="${esc(x.id)}" ${x.id === m.workbuddyModel ? 'selected' : ''}>${esc(x.name)} · ${esc(x.credits)}</option>`).join('')}</select><button class="button ghost" id="load-models">刷新模型</button></div></div><div class="model-list">${state.wbModels.slice(0, 12).map((x) => `<button type="button" class="model-row ${x.id === m.workbuddyModel ? 'selected' : ''}" data-model="${esc(x.id)}" aria-pressed="${x.id === m.workbuddyModel}"><span><strong>${esc(x.name)}</strong><small>${esc(x.id)} · 上下文 ${Math.round((x.contextWindow || 0)/1000)}K</small></span><span><span class="badge ${x.free ? 'good' : ''}">${esc(x.credits)}</span>${x.supportsImages ? '<span class="badge">视觉</span>' : ''}</span></button>`).join('')}</div>`
+      : renderEmptyState({ icon: '◎', title: '还没有获取模型列表', description: '请先登录 WorkBuddy，再检测账号并读取当前可用模型。', actionId: 'load-models', actionLabel: '获取模型' });
+    detail = `<div class="card"><div class="inline"><div><h2>WorkBuddy 积分通道</h2><p>使用你自己的 WorkBuddy 账号和积分。配置器不会显示或明文保存登录令牌。</p>${wbInfo}</div><div class="inline"><button class="button ghost" id="open-wb">打开 WorkBuddy 登录</button><button class="button ghost" id="detect-wb">检测账号</button></div></div>${modelChooser}</div>`;
   } else {
     detail = `<div class="card"><h2>连接自己的模型 API</h2><p>适用于 OpenAI 兼容接口。费用由相应模型服务商从你的账户余额扣除。</p><div class="grid"><div class="field"><label>接口地址</label><input id="api-url" value="${esc(m.baseUrl)}" placeholder="https://api.example.com/v1"></div><div class="field"><label>模型名称</label><input id="api-model" value="${esc(m.modelId)}" placeholder="例如 deepseek-flash"></div></div><div class="field"><label>API Key</label><input id="api-key" type="password" value="" placeholder="${m.hasApiKey ? '已安全保存；留空表示不修改' : '输入服务商提供的 API Key'}"><small>使用 Windows 系统加密保存，不写入项目文件。</small></div></div>`;
   }
-  return `<div class="hero"><p>先决定伙伴的大脑来自哪里。后面的所有行为、对话和代码生成都由同一个伙伴完成。</p></div><div class="grid">${channelCard('workbuddy','积分','经济型','登录 WorkBuddy 后选择模型，行为与对话消耗 WorkBuddy 积分。')}${channelCard('api','API','其他模型','输入 API Key 连接自己的模型账户，消耗服务商余额。')}</div><div class="spacer"></div>${detail}`;
+  const selector = renderSegmentedChoice({ label: '模型使用方式', name: 'channel', value: m.channel, options: [
+    { id: 'workbuddy', icon: '积', label: '经济型', description: '使用 WorkBuddy 积分' },
+    { id: 'api', icon: 'API', label: '其他模型', description: '使用自己的 API 余额' }
+  ] });
+  return `<div class="hero"><p>先决定伙伴的大脑来自哪里。后面的所有行为、对话和代码生成都由同一个伙伴完成。</p></div>${selector}<div class="spacer"></div>${detail}`;
 }
 
 function renderGame() {
@@ -105,7 +120,12 @@ function renderGame() {
   const instanceWorlds = state.instance?.worlds || [];
   const serverPicker = `<div class="field"><label>已有服务器目录（可选）</label><div class="inline"><input id="server-template-path" class="path" value="${esc(state.config.server.templatePath || '')}" placeholder="可留空，minebot 将准备匹配的服务器"><button id="choose-server-template" class="button ghost">浏览</button></div><small>会优先使用版本匹配的已有服务器；未找到时，构建时从官方来源下载对应服务端组件。原整合包不会被修改。</small></div>`;
   const worldPicker = g.instancePath ? `<div class="field"><label>选择要开服的世界存档</label><select id="world-path"><option value="">${instanceWorlds.length ? '请选择世界；原存档不会被修改' : '没有现成世界，将自动创建'}</option>${instanceWorlds.map((world) => `<option value="${esc(world.path)}" ${world.path===g.worldPath?'selected':''}>${esc(world.name)} · ${new Date(world.lastPlayedAt).toLocaleString('zh-CN')}</option>`).join('')}</select><small>构建时会复制到独立服务器目录，不覆盖原存档。</small></div>` : '';
-  return `<div class="hero"><p>可以使用 PCL2 已安装的版本或自己的整合包，服务器在独立目录中配置。启用语音时，会向所选游戏实例添加缺失的兼容语音模组。</p></div><div class="grid three">${channelCardGame('pcl2','P','PCL2 已安装版本','自动识别用户已有版本与模组。')}${channelCardGame('archive','⇩','本地整合包','支持 ZIP、MRPACK 和 7Z 文件。')}${channelCardGame('folder','▣','已解压目录','适合已包含 mods、config 和存档的目录。')}</div><div class="spacer"></div><div class="card">${sourcePanel}${worldPicker}${serverPicker}<div class="grid"><div class="field"><label>Minecraft 版本</label><input id="mc-version" value="${esc(g.minecraftVersion)}" placeholder="1.20.1"></div><div class="field"><label>模组加载器</label><select id="loader"><option value="">请选择加载器</option><option value="forge" ${g.modLoader==='forge'?'selected':''}>Forge</option><option value="neoforge" ${g.modLoader==='neoforge'?'selected':''}>NeoForge</option><option value="fabric" ${g.modLoader==='fabric'?'selected':''}>Fabric</option><option value="vanilla" ${g.modLoader==='vanilla'?'selected':''}>原版</option></select></div><div class="field"><label>加载器版本</label><input id="loader-version" value="${esc(g.loaderVersion || '')}" placeholder="自动识别，也可手动输入"></div></div></div>`;
+  const selector = renderSegmentedChoice({ label: '游戏来源', name: 'game-source', value: g.source, options: [
+    { id: 'pcl2', icon: 'P', label: 'PCL2 版本', description: '读取本机已有实例' },
+    { id: 'archive', icon: '⇩', label: '整合包文件', description: 'ZIP、MRPACK 或 7Z' },
+    { id: 'folder', icon: '▣', label: '已解压目录', description: '使用现有文件夹' }
+  ] });
+  return `<div class="hero"><p>可以使用 PCL2 已安装的版本或自己的整合包，服务器在独立目录中配置。启用语音时，会向所选游戏实例添加缺失的兼容语音模组。</p></div>${selector}<div class="spacer"></div><div class="card">${sourcePanel}${worldPicker}${serverPicker}<div class="grid"><div class="field"><label>Minecraft 版本</label><input id="mc-version" value="${esc(g.minecraftVersion)}" placeholder="1.20.1"></div><div class="field"><label>模组加载器</label><select id="loader"><option value="">请选择加载器</option><option value="forge" ${g.modLoader==='forge'?'selected':''}>Forge</option><option value="neoforge" ${g.modLoader==='neoforge'?'selected':''}>NeoForge</option><option value="fabric" ${g.modLoader==='fabric'?'selected':''}>Fabric</option><option value="vanilla" ${g.modLoader==='vanilla'?'selected':''}>原版</option></select></div><div class="field"><label>加载器版本</label><input id="loader-version" value="${esc(g.loaderVersion || '')}" placeholder="自动识别，也可手动输入"></div></div></div>`;
 }
 
 function channelCardGame(id, icon, title, text) { const selected=state.config.game.source===id; return `<article class="card selectable ${selected?'selected':''}" data-game-source="${id}"><div class="icon-box">${icon}</div><h2>${title}</h2><p>${text}</p></article>`; }
@@ -119,7 +139,11 @@ function renderResources() {
   const voiceSettings = r.voiceEnabled
     ? `<div class="spacer"></div><div class="grid"><div class="card"><h2>自动配置语音模组</h2><div class="check-row"><div><strong>Simple Voice Chat</strong><small>服务端和玩家客户端需使用彼此兼容的版本</small></div><span class="badge good">自动准备</span></div><p>开启语音后，minebot 会匹配版本并添加到当前游戏实例和服务器副本，不覆盖已有文件。游戏正在运行时，请重启游戏。其他玩家也需要兼容的客户端语音模组。</p></div><div class="card"><h2>伙伴声音</h2><p>选择本机 Windows 已安装的中文声音，不需要额外的 AI 语音模型。每台电脑的可用声音可能不同。</p><div class="field"><label for="tts-voice">中文声音</label><select id="tts-voice"><option value="">系统默认声音</option>${r.ttsVoice && !voices.some((v) => v.name === r.ttsVoice) ? `<option value="${esc(r.ttsVoice)}" selected>已选声音不可用：${esc(r.ttsVoice)}</option>` : ''}${voiceOptions}</select><small>${state.voiceError ? esc(state.voiceError) : `找到 ${voices.length} 个中文声音。保存后，重新启动伙伴生效。`}</small></div><div class="inline"><button id="refresh-voices" class="button ghost">刷新声音</button><button id="preview-voice" class="button secondary">试听</button></div><p>语音识别使用 Windows 中文语音识别组件，效果取决于系统支持与麦克风环境。</p></div></div>`
     : `<div class="spacer"></div><div class="card"><span class="badge good">已跳过语音配置</span><h2>仅文字对话</h2><p>配置器不会显示模组要求，不会进行语音检查，也不会生成语音网络配置。</p></div>`;
-  return `<div class="hero"><p>语音是可选功能。不需要语音的用户可以直接使用游戏文字聊天与 AI 伙伴交流。</p></div><div class="grid"><article class="card selectable ${!r.voiceEnabled?'selected':''}" data-voice-mode="text"><div class="icon-box">文</div><h2>仅文字对话</h2><p>不需要额外语音模组，配置最简单。</p></article><article class="card selectable ${r.voiceEnabled?'selected':''}" data-voice-mode="voice"><div class="icon-box">语</div><h2>启用语音伙伴</h2><p>启用后再显示语音模组要求与相关配置。</p></article></div>${voiceSettings}`;
+  const selector = renderSegmentedChoice({ label: '交流方式', name: 'voice-mode', value: r.voiceEnabled ? 'voice' : 'text', options: [
+    { id: 'text', icon: '文', label: '仅文字', description: '无需语音模组' },
+    { id: 'voice', icon: '语', label: '语音伙伴', description: '配置语音模组与声音' }
+  ] });
+  return `<div class="hero"><p>语音是可选功能。不需要语音的用户可以直接使用游戏文字聊天与 AI 伙伴交流。</p></div>${selector}${voiceSettings}`;
 }
 
 function renderPersonaContent() {
@@ -146,16 +170,38 @@ function renderNetwork() {
   const voiceFields = state.config.resources.voiceEnabled ? `<div class="field"><label>语音服务器地址（UDP）</label><input id="voice-address" value="${esc(n.voiceAddress)}" placeholder="域名或 IP:端口"></div>` : '';
   const voicePort = state.config.resources.voiceEnabled ? `<div class="field"><label>本地语音端口</label><input id="voice-port" type="number" value="${n.voiceLocalPort}"></div>` : '';
   const protocolNote = state.config.resources.voiceEnabled ? '<span class="badge">语音 UDP</span> 游戏和语音地址不会混用。' : '<span class="badge good">仅文字模式</span> 不需要配置语音 UDP 地址。';
-  return `<div class="hero"><p>${state.config.resources.voiceEnabled?'游戏连接使用 TCP，语音连接使用独立 UDP 端口。':'当前是仅文字对话模式，只需要配置游戏服务器 TCP 地址。'}</p></div><div class="grid">${networkCard('sakurafrp','隧','SakuraFrp 自动联机',state.config.resources.voiceEnabled?'匹配游戏 TCP 与语音 UDP 地址。':'只匹配游戏 TCP 地址。')}${networkCard('manual','✎','手动填写地址','适合其他穿透服务、云服务器或已有域名。')}${networkCard('lan','⌂','仅局域网','同一网络内游玩，不创建公网连接。')}</div><div class="spacer"></div><div class="card"><div class="inline"><div><h2>连接地址</h2><p>${n.mode==='sakurafrp'?'读取本机 SakuraFrp 服务日志，按本地端口匹配隧道日志；日志状态不保证当前连通，需实际测试。':'填写玩家进入游戏所需的地址。'}</p>${n.mode==='sakurafrp'?sakuraSummary:''}</div>${n.mode==='sakurafrp'?'<div class="inline"><button id="open-frp" class="button ghost">打开 SakuraFrp</button><button id="detect-frp" class="button ghost">重新检测</button></div>':''}</div><div class="grid"><div class="field"><label>游戏服务器地址（TCP）</label><input id="game-address" value="${esc(n.gameAddress)}" placeholder="域名或 IP:端口"></div>${voiceFields}</div><div class="grid"><div class="field"><label>本地游戏端口</label><input id="game-port" type="number" value="${n.gameLocalPort}"></div>${voicePort}</div><p><span class="badge">游戏 TCP</span>${protocolNote}</p></div>`;
+  const selector = renderSegmentedChoice({ label: '联机方式', name: 'network', value: n.mode, options: [
+    { id: 'sakurafrp', icon: '隧', label: 'SakuraFrp', description: state.config.resources.voiceEnabled ? '匹配 TCP 与 UDP' : '自动匹配游戏隧道' },
+    { id: 'manual', icon: '✎', label: '手动地址', description: '使用已有公网服务' },
+    { id: 'lan', icon: '⌂', label: '仅局域网', description: '本机或同一网络' }
+  ] });
+  return `<div class="hero"><p>${state.config.resources.voiceEnabled?'游戏连接使用 TCP，语音连接使用独立 UDP 端口。':'当前是仅文字对话模式，只需要配置游戏服务器 TCP 地址。'}</p></div>${selector}<div class="spacer"></div><div class="card"><div class="inline"><div><h2>连接地址</h2><p>${n.mode==='sakurafrp'?'读取本机 SakuraFrp 服务日志，按本地端口匹配隧道日志；日志状态不保证当前连通，需实际测试。':'填写玩家进入游戏所需的地址。'}</p>${n.mode==='sakurafrp'?sakuraSummary:''}</div>${n.mode==='sakurafrp'?'<div class="inline"><button id="open-frp" class="button ghost">打开 SakuraFrp</button><button id="detect-frp" class="button ghost">重新检测</button></div>':''}</div><div class="grid"><div class="field"><label>游戏服务器地址（TCP）</label><input id="game-address" value="${esc(n.gameAddress)}" placeholder="域名或 IP:端口"></div>${voiceFields}</div><div class="grid"><div class="field"><label>本地游戏端口</label><input id="game-port" type="number" value="${n.gameLocalPort}"></div>${voicePort}</div><p><span class="badge">游戏 TCP</span>${protocolNote}</p></div>`;
 }
 
-function networkCard(id, icon, title, text) { const selected=state.config.network.mode===id; return `<article class="card selectable ${selected?'selected':''}" data-network="${id}"><div class="icon-box">${icon}</div><h2>${title}</h2><p>${text}</p></article>`; }
+function networkCard(id, icon, title, text) { const selected=state.config.network.mode===id; return `<button type="button" class="card selectable choice-card ${selected?'selected':''}" data-network="${id}" aria-pressed="${selected}"><span class="icon-box">${icon}</span><span class="choice-copy"><strong>${title}</strong><small>${text}</small></span></button>`; }
+
+function checkVisualState(item = {}) {
+  if (item.needsChoice || item.status === 'choice') return 'choice';
+  if (item.status === 'working') return 'working';
+  if (item.status === 'pass' || item.ok && item.status !== 'pending') return 'success';
+  if (item.status === 'pending') return item.blocking ? 'repairable' : 'waiting';
+  if (item.status === 'error') return item.repairable ? 'repairable' : 'failure';
+  return 'waiting';
+}
+
+function renderActivityLabel(text, active) {
+  return `<span class="activity-label" aria-busy="${Boolean(active)}">${active ? '<span class="ui-activity is-active" aria-hidden="true"><i></i><i></i><i></i></span>' : ''}<span>${esc(text)}</span></span>`;
+}
 
 function renderCheckContent() {
   const checks = state.selfCheck?.checks || [];
-  const icon = (c) => c.status === 'pass' ? ['ok','✓'] : c.status === 'error' ? ['fail','!'] : c.status === 'pending' ? ['pending','…'] : ['optional','—'];
   const summary = !checks.length ? '点击按钮开始检查。' : state.selfCheck.ready ? (state.selfCheck.pending ? '必要环境已具备；还有项目会在开服阶段自动完成。' : '所有必要检查均已通过。') : `还有 ${state.selfCheck.blockingFailures || 0} 项必须处理。`;
-  return `<div class="hero"><p>自检会区分必须修复、等待配置和可选功能。只有真正阻止启动的项目才会标红。</p></div><div class="grid"><div class="card"><div class="inline"><div><h2>准备情况</h2><p>${summary}</p></div><button id="run-check" class="button ghost">立即自检</button></div>${checks.map((c) => { const [kind,mark]=icon(c); return `<div class="check-row"><div><strong>${esc(c.title)}</strong><small>${esc(c.detail)}</small></div><span class="check-mark ${kind}">${mark}</span></div>`; }).join('')}</div><div class="card"><h2>即将构建的内容</h2><div class="check-row"><div><strong>唯一 AI 伙伴</strong><small>${esc(state.config.persona.name)} · ${state.config.model.channel==='workbuddy'?'WorkBuddy 积分':'自备 API'}</small></div><span class="badge good">1 个 Agent</span></div><div class="check-row"><div><strong>用户整合包</strong><small>${esc(state.config.game.minecraftVersion)} · ${esc(state.config.game.modLoader)}</small></div><span class="check-mark">✓</span></div><div class="check-row"><div><strong>语音</strong><small>${state.config.resources.voiceEnabled?'启用双向语音':'未启用'}</small></div><span class="check-mark">${state.config.resources.voiceEnabled?'✓':'—'}</span></div><div class="check-row"><div><strong>联机方式</strong><small>${esc(state.config.network.mode)}</small></div><span class="check-mark">→</span></div><p>构建前会显示原包位置、独立服务器目录、复制计划、备份位置和端口配置；开启语音时，会自动准备匹配的必要模组。</p></div></div>`;
+  const labels = { waiting: '等待后续', working: '正在检查', repairable: '可自动准备', choice: '需要选择', success: '已通过', failure: '必须处理' };
+  const marks = { waiting: '—', working: '…', repairable: '↻', choice: '?', success: '✓', failure: '!' };
+  const timeline = checks.length
+    ? `<ol class="ui-timeline">${checks.map((check) => { const visual = checkVisualState(check); return `<li class="ui-timeline-item" data-state="${visual}"><span class="ui-timeline-marker" aria-hidden="true">${marks[visual]}</span><span class="ui-timeline-copy"><strong>${esc(check.title)}</strong><small>${esc(check.detail)}</small></span><span class="ui-status-chip" data-state="${visual}">${labels[visual]}</span></li>`; }).join('')}</ol>`
+    : renderEmptyState({ icon: '✓', title: '还没有检查结果', description: '点击“立即自检”，Minebot 会检查模型、游戏、运行环境与联机设置。' });
+  return `<div class="hero"><p>自检会区分必须修复、等待配置和可选功能。只有真正阻止启动的项目才会标红。</p></div><div class="grid"><div class="card"><div class="inline"><div><h2>准备情况</h2><p>${summary}</p></div><button id="run-check" class="button ghost">立即自检</button></div>${timeline}</div><div class="card"><h2>即将构建的内容</h2><div class="check-row"><div><strong>唯一 AI 伙伴</strong><small>${esc(state.config.persona.name)} · ${state.config.model.channel==='workbuddy'?'WorkBuddy 积分':'自备 API'}</small></div><span class="badge good">1 个 Agent</span></div><div class="check-row"><div><strong>用户整合包</strong><small>${esc(state.config.game.minecraftVersion)} · ${esc(state.config.game.modLoader)}</small></div><span class="check-mark">✓</span></div><div class="check-row"><div><strong>语音</strong><small>${state.config.resources.voiceEnabled?'启用双向语音':'未启用'}</small></div><span class="check-mark">${state.config.resources.voiceEnabled?'✓':'—'}</span></div><div class="check-row"><div><strong>联机方式</strong><small>${esc(state.config.network.mode)}</small></div><span class="check-mark">→</span></div><p>构建前会显示原包位置、独立服务器目录、复制计划、备份位置和端口配置；开启语音时，会自动准备匹配的必要模组。</p></div></div>`;
 }
 
 function renderDashboardContent() {
@@ -181,13 +227,14 @@ function renderDashboardContent() {
 function renderServerProgress() {
   const s = state.serverStatus || {};
   const history = (s.history || []).slice(-8);
+  const active = Boolean(state.preparing || s.busy || ['building', 'starting', 'stopping', 'syncing'].includes(s.phase));
   const progress = history.length ? `<ol class="server-progress">${history.map(item => `<li>${esc(item.message)}</li>`).join('')}</ol>` : '<p>启动时会自动准备运行环境、检查世界与模组，再启动游戏服务器和伙伴。</p>';
   const backup = s.recovery?.backupPath ? `<p>${s.recovery.needsChoice ? '原世界和备份已保留，校验未通过。请先查看备份，再选择其他完好的世界；不会自动回退进度。' : '本次世界已自动备份并校验。未写入磁盘的进度不能保证恢复。'}</p><button id="open-recovery-backup" class="button ghost">打开恢复备份</button>` : '';
   const sync = s.syncFailed ? '<p>服务器世界仍保留在工作目录，单人存档尚未同步成功。</p><button id="retry-world-sync" class="button secondary">重新同步单人存档</button>' : '';
   const mods = (s.modPreparation?.installed || []).map(item => `<li>${esc(item.id)} · ${esc(item.version)}</li>`).join('');
   const choice = ['MOD_CHOICE_REQUIRED', 'MOD_FILE_REQUIRED'].includes(s.errorCode) ? `<div class="notice"><h3>需要选择兼容的模组</h3><p class="error-details">${esc(s.message)}</p><p>移除内容模组可能让世界里的方块或物品消失。原世界不会被改写；请先核对上面的冲突，在原整合包中选择兼容版本，然后点击重新检查并启动。</p><button id="open-source-mods" class="button secondary">打开原整合包模组目录</button></div>` : '';
   const worldChoice = s.errorCode === 'WORLD_CHOICE_REQUIRED' ? '<button id="choose-another-world" class="button secondary">重新选择世界存档</button>' : '';
-  return `<div class="spacer"></div><div class="card"><h2>准备进度与恢复</h2>${state.statusError ? `<p class="notice error">${esc(state.statusError)}</p>` : ''}${progress}${choice}${backup}${worldChoice}${sync}${mods ? `<p>已自动补齐依赖：</p><ul>${mods}</ul>` : ''}<p>不会自动移除可能改变世界内容的模组。无法安全处理时会保留世界和诊断文件，供选择后重试。</p></div>`;
+  return `<div class="spacer"></div><div class="card ui-activity-edge" aria-busy="${active}"><div class="section-heading"><div><h2>准备进度与恢复</h2>${active ? renderActivityLabel('正在准备运行资源，请保持 Minebot 打开', true) : '<small>当前没有运行中的准备任务</small>'}</div><span class="ui-status-chip" data-state="${active ? 'working' : s.phase === 'failed' ? 'failure' : s.ready ? 'success' : 'waiting'}">${active ? '处理中' : s.phase === 'failed' ? '需要处理' : s.ready ? '已就绪' : '等待启动'}</span></div>${state.statusError ? `<p class="notice error">${esc(state.statusError)}</p>` : ''}${progress}${choice}${backup}${worldChoice}${sync}${mods ? `<p>已自动补齐依赖：</p><ul>${mods}</ul>` : ''}<p>不会自动移除可能改变世界内容的模组。无法安全处理时会保留世界和诊断文件，供选择后重试。</p></div>`;
 }
 function renderDashboard() { return renderDashboardContent().replace('<div class="card"><h2>模式监管', `${renderServerProgress()}<div class="card"><h2>模式监管`); }
 function renderCheck() {

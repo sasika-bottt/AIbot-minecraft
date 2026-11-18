@@ -3,6 +3,7 @@ const input = document.getElementById('input');
 const sendButton = document.getElementById('send');
 const clearButton = document.getElementById('clear');
 const statusNode = document.getElementById('status');
+const composerNode = document.querySelector('.composer');
 const errorNode = document.getElementById('error');
 const modeNote = document.getElementById('mode-note');
 const executeButton = document.getElementById('execute');
@@ -52,8 +53,27 @@ function showError(message = '') {
   errorNode.classList.toggle('hidden', !message);
 }
 
+function setComposerActivity({ active = false, label = '' } = {}) {
+  composerNode.setAttribute('aria-busy', String(Boolean(active)));
+  statusNode.replaceChildren();
+  if (active) {
+    const indicator = document.createElement('span');
+    indicator.className = 'ui-activity is-active';
+    indicator.setAttribute('aria-hidden', 'true');
+    indicator.append(document.createElement('i'), document.createElement('i'), document.createElement('i'));
+    statusNode.append(indicator);
+  }
+  const copy = document.createElement('span');
+  copy.textContent = label || (active ? '正在处理，请稍候' : '已完成');
+  statusNode.append(copy);
+}
+
 function render(state) {
-  modeButtons.forEach((button) => button.classList.toggle('selected', button.dataset.mode === state.mode));
+  modeButtons.forEach((button) => {
+    const selected = button.dataset.mode === state.mode;
+    button.classList.toggle('selected', selected);
+    button.setAttribute('aria-pressed', String(selected));
+  });
   modeNote.textContent = MODE_COPY[state.mode] || MODE_COPY.manual;
   executeButton.classList.toggle('hidden', state.mode !== 'admin');
   discussButton.classList.toggle('hidden', state.mode !== 'manual');
@@ -87,15 +107,17 @@ async function send() {
   showError();
   sendButton.disabled = true;
   sendButton.textContent = '伙伴正在思考…';
-  statusNode.textContent = '正在澄清建造需求';
+  setComposerActivity({ active: true, label: '正在澄清并整理建造需求' });
   try {
     const state = await window.whale.sendBuildMessage(text);
     input.value = '';
     render(state);
+    setComposerActivity({ active: false, label: '已保存，伙伴已回复' });
   } catch (error) {
     showError(error.message || String(error));
     const state = await window.whale.buildPlannerState();
     render(state);
+    setComposerActivity({ active: false, label: '请求未完成，请查看上方提示' });
   } finally {
     sendButton.disabled = false;
     sendButton.textContent = '发送给伙伴';
@@ -119,20 +141,22 @@ discussButton.addEventListener('click', async () => {
   showError();
   discussButton.disabled = true; sendButton.disabled = true; clearButton.disabled = true;
   modeButtons.forEach((button) => { button.disabled = true; });
-  statusNode.textContent = '正在请游戏中的伙伴讨论；不会自动执行施工';
-  try { render(await window.whale.discussWithAgent()); }
-  catch (error) { showError(error.message || String(error)); }
+  setComposerActivity({ active: true, label: '正在请游戏中的伙伴讨论，不会自动施工' });
+  try { render(await window.whale.discussWithAgent()); setComposerActivity({ active: false, label: '讨论完成，结果已保存' }); }
+  catch (error) { showError(error.message || String(error)); setComposerActivity({ active: false, label: '讨论未完成，请查看上方提示' }); }
   finally { discussButton.disabled = false; sendButton.disabled = false; clearButton.disabled = false; modeButtons.forEach((button) => { button.disabled = false; }); }
 });
 executeButton.addEventListener('click', async () => {
   if (!window.confirm('minebot将先保存完整世界备份，再执行方案中列出的受控建造命令。确认继续吗？')) return;
   showError();
   executeButton.disabled = true;
+  setComposerActivity({ active: true, label: '正在备份世界并执行已确认的方案' });
   try {
     const result = await window.whale.executeAdminBuild();
-    statusNode.textContent = `${result.message} 备份：${result.backupPath}`;
+    setComposerActivity({ active: false, label: `${result.message} 备份：${result.backupPath}` });
   } catch (error) {
     showError(error.message || String(error));
+    setComposerActivity({ active: false, label: '执行未完成，请查看上方提示' });
   } finally {
     executeButton.disabled = false;
   }
@@ -148,10 +172,12 @@ async function refreshSurvival() {
 }
 previewButton.addEventListener('click', async () => {
   showError(); previewButton.disabled = true;
+  setComposerActivity({ active: true, label: '正在生成可核对的施工预览' });
   try {
     const plan = await window.whale.generateSurvivalBlueprint();
     showBlueprint(plan, false);
-  } catch (error) { showError(error.message || String(error)); }
+    setComposerActivity({ active: false, label: '施工预览已生成，请逐项核对' });
+  } catch (error) { showError(error.message || String(error)); setComposerActivity({ active: false, label: '预览生成失败，请查看上方提示' }); }
   finally { previewButton.disabled = false; }
 });
 resumeSurvivalButton.addEventListener('click', async () => {
@@ -164,6 +190,7 @@ resumeSurvivalButton.addEventListener('click', async () => {
 });
 startSurvivalButton.addEventListener('click', async event => {
   event.preventDefault(); showError(); startSurvivalButton.disabled = true;
+  setComposerActivity({ active: true, label: '正在备份世界并启动生存施工' });
   try {
     const plan = JSON.parse(blueprintJson.value);
     blueprintDialog.close();
@@ -171,7 +198,8 @@ startSurvivalButton.addEventListener('click', async event => {
     if (resuming) await window.whale.resumeSurvivalBuild();
     else await window.whale.startSurvivalBuild(plan);
     await refreshSurvival();
-  } catch (error) { showError(error.message || String(error)); }
+    setComposerActivity({ active: false, label: '施工任务已启动，可在上方查看进度' });
+  } catch (error) { showError(error.message || String(error)); setComposerActivity({ active: false, label: '施工未启动，请查看上方提示' }); }
   finally { startSurvivalButton.disabled = false; }
 });
 stopSurvivalButton.addEventListener('click', async () => {

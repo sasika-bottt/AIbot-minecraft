@@ -24,11 +24,12 @@ app.whenReady().then(async () => {
   await win.loadFile(path.join(__dirname, '../src/renderer/index.html'));
   await new Promise(resolve => setTimeout(resolve, 700));
   await win.webContents.executeJavaScript('state.step=6;render()');
+  await win.webContents.executeJavaScript('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
   const result = await win.webContents.executeJavaScript("({text:document.body.textContent,choice:!!document.getElementById('open-source-mods'),overflow:document.documentElement.scrollWidth>innerWidth})");
   assert.equal(result.choice, true); assert.equal(result.overflow, false);
   assert.ok(result.text.includes(require('../package.json').version));
   assert.match(result.text, /方块或物品消失/); assert.match(result.text, /等待游戏服务器就绪/);
-  fs.writeFileSync(path.join(process.env.TEMP, 'minebot-105-dashboard.png'), (await win.webContents.capturePage()).toPNG());
+  fs.writeFileSync(path.join(process.env.TEMP, 'minebot-108-dashboard.png'), (await win.webContents.capturePage()).toPNG());
   status = { ...status, errorCode: 'WORLD_CHOICE_REQUIRED', recovery: { backupPath: 'C:\\example-backup', needsChoice: true } };
   await win.webContents.executeJavaScript('(async()=>{state.serverStatus=await window.whale.serverStatus();render()})()');
   assert.equal(await win.webContents.executeJavaScript("!!document.getElementById('choose-another-world')"), true);

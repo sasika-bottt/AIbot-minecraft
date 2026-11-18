@@ -1,4 +1,5 @@
 name: Build minebot
+
 on:
   push:
     branches: ['main', 'minebot-release-*']
@@ -10,21 +11,68 @@ on:
         description: 'Create a draft GitHub release after all checks pass'
         type: boolean
         default: false
+
 permissions:
-  contents: write
+  contents: read
+
 concurrency:
   group: minebot-${{ github.ref }}
   cancel-in-progress: true
+
 jobs:
-  build:
-    runs-on: windows-latest
+  privacy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout complete history without persisted credentials
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '22'
+
+      - name: Scan product files and complete reachable history
+        run: node tests/privacy-scan-smoke.cjs && node scripts/privacy-scan.cjs
+
+      - name: Install verified Gitleaks
+        shell: bash
+        run: |
+          curl --fail --location --silent --show-error \
+            --output gitleaks.tar.gz \
+            https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  gitleaks.tar.gz" | sha256sum --check --strict
+          tar -xzf gitleaks.tar.gz gitleaks
+
+      - name: Scan complete Git history for secrets
+        run: ./gitleaks git --redact=100 --exit-code=1 .
+
+  build:
+    needs: privacy
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.metadata.outputs.version }}
+    steps:
+      - name: Checkout complete history without persisted credentials
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+
       - run: npm ci
       - run: npm --prefix runtime/mindcraft-final ci --omit=dev
+      - run: npm run privacy:check
       - run: npm run check
       - run: node scripts/prepare-dist.cjs
       - run: npm test
@@ -32,32 +80,52 @@ jobs:
       - run: npm --prefix runtime/mindcraft-final audit --omit=dev --audit-level=low
       - run: npm run dist -- --publish never
       - run: node tests/release-purity-smoke.cjs
-      - name: Write installer checksum
+
+      - name: Record release metadata and installer checksum
+        id: metadata
         shell: pwsh
         run: |
           $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
           $file = "dist/minebot-setup-$version.exe"
           $hash = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  minebot-setup-$version.exe" | Set-Content -LiteralPath "dist/minebot-setup-$version.sha256" -Encoding ascii
-      - uses: actions/upload-artifact@v4
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Upload verified release payload
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: minebot-windows-installer
           path: |
             dist/minebot-setup-*.exe
             dist/minebot-setup-*.sha256
+            docs/release-notes.md
           if-no-files-found: error
+
+  publish:
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.publish) || startsWith(github.ref, 'refs/heads/minebot-release-') }}
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download verified release payload
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: minebot-windows-installer
+          path: release
+
       - name: Publish new installer
-        if: (github.event_name == 'workflow_dispatch' && inputs.publish) || startsWith(github.ref, 'refs/heads/minebot-release-')
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ github.sha }}
+          VERSION: ${{ needs.build.outputs.version }}
         run: |
-          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
-          $tag = "minebot-v$version"
-          gh release view $tag --json tagName 2>$null
+          $tag = "minebot-v$env:VERSION"
+          gh release view $tag --repo $env:GITHUB_REPOSITORY --json tagName 2>$null
           if ($LASTEXITCODE -eq 0) { throw "Release already exists: $tag. Increment the version; existing installers are never overwritten." }
-          $releaseArgs = @('release', 'create', $tag, "dist/minebot-setup-$version.exe", "dist/minebot-setup-$version.sha256", '--target', $env:GITHUB_SHA, '--title', "minebot $version", '--notes-file', 'docs/release-notes.md')
+          $releaseArgs = @('release', 'create', $tag, "release/dist/minebot-setup-$env:VERSION.exe", "release/dist/minebot-setup-$env:VERSION.sha256", '--repo', $env:GITHUB_REPOSITORY, '--target', $env:RELEASE_SHA, '--title', "minebot $env:VERSION", '--notes-file', 'release/docs/release-notes.md')
           if ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch') { $releaseArgs += '--draft' }
-          if ($version.Contains('-')) { $releaseArgs += '--prerelease' }
+          if ($env:VERSION.Contains('-')) { $releaseArgs += '--prerelease' }
           gh @releaseArgs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

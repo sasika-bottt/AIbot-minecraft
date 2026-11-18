@@ -22,3 +22,7 @@ tests/.tmp-profile/
 keys.json
 *_token*
 .codex/
+.superpowers/
+.privacy-audit-*/
+private-backups/
+*.bundle

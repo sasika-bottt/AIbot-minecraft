@@ -1,31 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="350" viewBox="0 0 1200 350" role="img" aria-labelledby="title desc">
-  <title id="title">minebot</title><desc id="desc">让你的 Minecraft 世界，多一个伙伴。Windows 桌面应用。</desc>
-  <defs>
-    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#102c39"/><stop offset="1" stop-color="#176b75"/></linearGradient>
-    <linearGradient id="glass" x2="0" y2="1"><stop stop-color="#77e0d5"/><stop offset="1" stop-color="#35a8ac"/></linearGradient>
-    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#a1e9de" stroke-opacity=".055"/></pattern>
-  </defs>
-  <rect width="1200" height="350" rx="28" fill="url(#bg)"/>
-  <rect width="1200" height="350" rx="28" fill="url(#grid)"/>
-  <circle cx="1050" cy="85" r="220" fill="#7be3cf" opacity=".045"/>
+  <title id="title">minebot</title><desc id="desc">用自己的世界，配置一个真正能进服的 AI 伙伴。</desc>
+  <rect x="1" y="1" width="1198" height="348" rx="20" fill="#f7f8fa" stroke="#dfe4e8" stroke-width="2"/>
+  <path d="M0 286h1200v64H0z" fill="#eef1f4" opacity=".8"/>
   <g font-family="Segoe UI, Microsoft YaHei, PingFang SC, sans-serif">
-    <rect x="62" y="48" width="158" height="30" rx="15" fill="#86e6d5" opacity=".12"/>
-    <text x="79" y="68" font-size="13" fill="#aceee1" letter-spacing="2">YOUR WORLD, +1</text>
-    <text x="58" y="164" font-size="76" font-weight="700" fill="#f4fbfd" letter-spacing="-3">minebot</text>
-    <text x="62" y="219" font-size="27" fill="#d9eeef">让你的 Minecraft 世界，多一个伙伴。</text>
-    <text x="63" y="278" font-size="16" fill="#a5cbd0">自有整合包  ·  自动准备  ·  单 Agent 伙伴</text>
+    <rect x="62" y="49" width="176" height="31" rx="8" fill="#eaf2fa" stroke="#d6e5f3"/>
+    <text x="78" y="69" font-size="13" fill="#3f6f9d" letter-spacing="1.6">YOUR WORLD, +1</text>
+    <text x="58" y="164" font-size="76" font-weight="720" fill="#14181d" letter-spacing="-3">minebot</text>
+    <text x="62" y="219" font-size="27" fill="#3f4953">用自己的世界，配置一个真正能进服的 AI 伙伴。</text>
+    <text x="63" y="278" font-size="16" fill="#6f7a86">自有整合包  ·  自动准备  ·  单 Agent 伙伴  ·  世界安全</text>
   </g>
-  <g transform="translate(845 62)">
-    <ellipse cx="118" cy="244" rx="114" ry="16" fill="#081e2a" opacity=".25"/>
-    <path d="M26 196l85-47 126 43-85 50z" fill="#3a9999"/><path d="M26 196v25l126 43v-22z" fill="#246c77"/><path d="M152 242l85-50v25l-85 47z" fill="#1a5265"/>
-    <path d="M55 49l93-29 75 40-92 32z" fill="#c2f2e6"/>
-    <path d="M55 49v103l76 44V92z" fill="#3699a3"/>
-    <path d="M131 92l92-32v103l-92 33z" fill="url(#glass)"/>
-    <path d="M146 112l62-21v46l-62 22z" fill="#143e50"/>
-    <path d="M155 115l12-4v14l-12 4zm27-9l12-4v14l-12 4z" fill="#cdfbf1"/>
-    <path d="M168 139l20-7" stroke="#8ce6d5" stroke-width="4"/>
-    <path d="M77 164v31l23 13v-31zm91 23v28l23-8v-29z" fill="#8dded2"/>
-    <path d="M125 26V7" stroke="#c2f2e6" stroke-width="6"/><rect x="117" y="-3" width="16" height="13" rx="3" fill="#8ce6d5"/>
-    <path d="M265 104h16m-8-8v16M12 16h12m-6-6v12" stroke="#a9e9dc" opacity=".6" stroke-width="3"/>
+  <g transform="translate(842 53)">
+    <ellipse cx="124" cy="254" rx="118" ry="13" fill="#27323c" opacity=".09"/>
+    <path d="M24 202l93-49 130 42-92 53z" fill="#6f7a86"/><path d="M24 202v24l131 43v-21z" fill="#3f4953"/><path d="M155 248l92-53v24l-92 50z" fill="#27323c"/>
+    <path d="M53 52l97-31 78 39-96 34z" fill="#eaf2fa" stroke="#b9d2ea" stroke-width="2"/>
+    <path d="M53 52v105l79 45V94z" fill="#3f6f9d"/>
+    <path d="M132 94l96-34v105l-96 37z" fill="#6fa6d9"/>
+    <path d="M148 113l64-22v47l-64 23z" fill="#27323c"/>
+    <path d="M157 116l12-4v14l-12 4zm28-10l12-4v14l-12 4z" fill="#fff"/>
+    <path d="M171 141l20-7" stroke="#eaf2fa" stroke-width="4"/>
+    <path d="M76 169v30l24 14v-31zm94 23v29l24-9v-29z" fill="#b9d2ea"/>
+    <path d="M126 28V8" stroke="#3f6f9d" stroke-width="6"/><rect x="118" y="-2" width="16" height="13" rx="3" fill="#6fa6d9"/>
+    <path d="M274 105h16m-8-8v16M8 19h12m-6-6v12" stroke="#6fa6d9" stroke-width="3"/>
   </g>
 </svg>
