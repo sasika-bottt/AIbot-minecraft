@@ -1,0 +1,63 @@
+name: Build minebot
+on:
+  push:
+    branches: ['main', 'minebot-release-*']
+  pull_request:
+    branches: ['main']
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Create a draft GitHub release after all checks pass'
+        type: boolean
+        default: false
+permissions:
+  contents: write
+concurrency:
+  group: minebot-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm --prefix runtime/mindcraft-final ci --omit=dev
+      - run: npm run check
+      - run: node scripts/prepare-dist.cjs
+      - run: npm test
+      - run: npm audit --omit=dev --audit-level=low
+      - run: npm --prefix runtime/mindcraft-final audit --omit=dev --audit-level=low
+      - run: npm run dist -- --publish never
+      - run: node tests/release-purity-smoke.cjs
+      - name: Write installer checksum
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $file = "dist/minebot-setup-$version.exe"
+          $hash = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  minebot-setup-$version.exe" | Set-Content -LiteralPath "dist/minebot-setup-$version.sha256" -Encoding ascii
+      - uses: actions/upload-artifact@v4
+        with:
+          name: minebot-windows-installer
+          path: |
+            dist/minebot-setup-*.exe
+            dist/minebot-setup-*.sha256
+          if-no-files-found: error
+      - name: Publish new installer
+        if: (github.event_name == 'workflow_dispatch' && inputs.publish) || startsWith(github.ref, 'refs/heads/minebot-release-')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $tag = "minebot-v$version"
+          gh release view $tag --json tagName 2>$null
+          if ($LASTEXITCODE -eq 0) { throw "Release already exists: $tag. Increment the version; existing installers are never overwritten." }
+          $releaseArgs = @('release', 'create', $tag, "dist/minebot-setup-$version.exe", "dist/minebot-setup-$version.sha256", '--target', $env:GITHUB_SHA, '--title', "minebot $version", '--notes-file', 'docs/release-notes.md')
+          if ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch') { $releaseArgs += '--draft' }
+          if ($version.Contains('-')) { $releaseArgs += '--prerelease' }
+          gh @releaseArgs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

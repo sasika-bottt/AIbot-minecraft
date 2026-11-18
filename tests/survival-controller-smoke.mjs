@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import { SurvivalController } from '../runtime/mindcraft-final/src/agent/npc/survival_controller.js';
+let action;
+const agent = { isIdle: () => true, bot: { minebotWorldName:'minecraft:overworld', game: { dimension:'minecraft:overworld' }, pathfinder: { stop() {} }, blockAt(p) { return {name:p.x === 4 ? 'dirt' : 'stone'}; } }, actions: { runAction(_label, fn) { return new Promise(resolve => { action = async () => { await fn(); resolve({success:true}); }; }); } } };
+const pos = (x,y,z,name) => ({x,y,z,name});
+const plan = { bounds:{min:pos(0,0,0),max:pos(1,0,0)}, blocks:[pos(0,0,0,'dirt')], sources:[] };
+const controller = new SurvivalController(agent);
+assert.throws(() => controller.start(plan,'minecraft:the_nether'), /世界/);
+const scan = controller.scan(plan, 'minecraft:overworld', [{min:pos(4,0,0),max:pos(5,0,0)}]);
+assert.deepEqual(scan.sources, [{x:4,y:0,z:0,name:'dirt',product:'dirt'}]);
+assert.throws(() => controller.scan(plan,'minecraft:overworld',[{min:pos(0,0,0),max:pos(33,0,0)}]), /超过/);
+assert.equal(controller.scan(plan,'minecraft:overworld',[{min:pos(0,0,0),max:pos(1,0,0)}]).sources.length, 0);
+controller.start(plan,'minecraft:overworld');
+assert.throws(() => controller.start(plan,'minecraft:overworld'), /其他任务/);
+controller.stop();
+await action(); await new Promise(resolve => setImmediate(resolve));
+assert.equal(controller.status().phase,'paused', 'stop before action starts must persist');
+console.log('survival controller smoke test passed');

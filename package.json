@@ -1,0 +1,91 @@
+{
+  "name": "minebot-desktop",
+  "version": "1.0.7",
+  "private": true,
+  "description": "minebot：智能世界伙伴与服务器管家",
+  "main": "src/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "check": "node --check src/main.cjs && node --check src/preload.cjs && node --check src/services/config-store.cjs && node --check src/services/detector.cjs && node --check src/services/archive-manager.cjs && node --check src/services/workbuddy.cjs && node --check src/services/build-planner.cjs && node --check src/services/server-manager.cjs && node --check src/services/bot-manager.cjs && node --check src/services/sakura-frp.cjs && node --check src/services/skin-export.cjs && node --check src/renderer/app.js && node --check src/renderer/build-chat.js && node --check src/services/survival-jobs.cjs && node --check runtime/mindcraft-final/src/agent/code-lint.js && node --check src/services/server-runtime.cjs && node --check src/services/downloads.cjs && node --check src/services/managed-mods.cjs && node --check src/services/mrpack.cjs && node --check runtime/mindcraft-final/src/utils/fabric-registry.cjs && node --check runtime/mindcraft-final/src/agent/voice-protocol.cjs && node --check runtime/mindcraft-final/src/agent/modes.js && node --check runtime/mindcraft-final/src/agent/library/skills.js && node --check src/services/world-recovery.cjs && node --check src/services/mod-health.cjs && node --check src/services/server-probe.cjs",
+    "test": "node tests/config-store-smoke.cjs && node tests/detector-smoke.cjs && node tests/archive-manager-smoke.cjs && node tests/build-planner-smoke.cjs && node tests/workbuddy-smoke.cjs && node tests/workbuddy-retry-smoke.mjs && node tests/server-manager-smoke.cjs && node tests/server-safety-smoke.cjs && node tests/bot-manager-smoke.cjs && node tests/sakura-frp-smoke.cjs && node tests/system-voices-smoke.cjs && node tests/skin-export-smoke.cjs && node tests/plan-discussion-smoke.mjs && node tests/renderer-state-smoke.cjs && node tests/dependency-compat-smoke.cjs && node tests/cross-version-smoke.cjs && node tests/item-pickup-smoke.mjs && node tests/recovery-pipeline-smoke.cjs && node tests/mod-health-smoke.cjs && npm run test:survival-build",
+    "test:survival-build": "node tests/survival-build-smoke.mjs && node tests/survival-controller-smoke.mjs && node tests/survival-jobs-smoke.cjs",
+    "test:planner": "node tests/build-planner-smoke.cjs",
+    "test:workbuddy": "node tests/workbuddy-smoke.cjs && node tests/workbuddy-retry-smoke.mjs",
+    "test:server": "node tests/server-manager-smoke.cjs",
+    "test:bot": "node tests/bot-manager-smoke.cjs",
+    "test:sakura": "node tests/sakura-frp-smoke.cjs",
+    "predist": "node scripts/prepare-dist.cjs",
+    "dist": "electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "45.3.2",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "cn.minebot.companion",
+    "productName": "minebot",
+    "artifactName": "minebot-setup-${version}.${ext}",
+    "files": [
+      "src/**/*",
+      "!src/renderer/assets/whale-skin.png",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "runtime/node.exe",
+        "to": "runtime/node.exe"
+      },
+      {
+        "from": "runtime/mindcraft-final",
+        "to": "runtime/mindcraft",
+        "filter": [
+          "main.js",
+          "settings.js",
+          "wb.json",
+          "package.json",
+          "LICENSE",
+          "native_voice.ps1",
+          "src/**/*",
+          "profiles/defaults/**/*",
+          "bots/execTemplate.js",
+          "bots/lintTemplate.js"
+        ]
+      },
+      {
+        "from": "runtime/mindcraft-final/node_modules",
+        "to": "runtime/mindcraft/node_modules",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "asarUnpack": [
+      "node_modules/dsh-workbuddy-connect/**/*",
+      "node_modules/@deepseek-ai/dsh-home-paths/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/minebot-icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-home-paths": "^0.2.1-rc.2",
+    "dsh-workbuddy-connect": "0.7.9",
+    "prismarine-nbt": "2.7.0",
+    "semver": "7.7.3",
+    "yauzl": "2.10.0"
+  },
+  "overrides": {
+    "@electron/universal": {
+      "minimatch": "11.0.1"
+    },
+    "app-builder-lib": {
+      "minimatch": "11.0.1"
+    }
+  }
+}

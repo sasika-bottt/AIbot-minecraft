@@ -1,0 +1,9 @@
+{
+  "name": "@minebot/rimraf-literal-compat",
+  "version": "1.0.0",
+  "description": "Literal-path cleanup adapter for node-pre-gyp; no glob expansion",
+  "main": "index.cjs",
+  "license": "MIT",
+  "files": ["index.cjs", "LICENSE"],
+  "engines": { "node": ">=18" }
+}

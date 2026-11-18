@@ -1,0 +1,416 @@
+{
+  "auditReportVersion": 2,
+  "vulnerabilities": {
+    "@azure/msal-node": {
+      "name": "@azure/msal-node",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "uuid"
+      ],
+      "effects": [
+        "prismarine-auth"
+      ],
+      "range": "<=5.1.4",
+      "nodes": [
+        "node_modules/@azure/msal-node"
+      ],
+      "fixAvailable": false
+    },
+    "@discordjs/node-pre-gyp": {
+      "name": "@discordjs/node-pre-gyp",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "rimraf"
+      ],
+      "effects": [
+        "@discordjs/opus"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/@discordjs/node-pre-gyp"
+      ],
+      "fixAvailable": false
+    },
+    "@discordjs/opus": {
+      "name": "@discordjs/opus",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "@discordjs/node-pre-gyp"
+      ],
+      "effects": [
+        "mineflayer-simplevoice"
+      ],
+      "range": ">=0.3.1",
+      "nodes": [
+        "node_modules/@discordjs/opus"
+      ],
+      "fixAvailable": false
+    },
+    "@eslint-community/eslint-utils": {
+      "name": "@eslint-community/eslint-utils",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "eslint"
+      ],
+      "effects": [
+        "eslint"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/@eslint-community/eslint-utils"
+      ],
+      "fixAvailable": {
+        "name": "eslint",
+        "version": "4.0.0",
+        "isSemVerMajor": true
+      }
+    },
+    "@eslint/config-array": {
+      "name": "@eslint/config-array",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "minimatch"
+      ],
+      "effects": [
+        "eslint"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/@eslint/config-array"
+      ],
+      "fixAvailable": {
+        "name": "eslint",
+        "version": "4.0.0",
+        "isSemVerMajor": true
+      }
+    },
+    "@eslint/eslintrc": {
+      "name": "@eslint/eslintrc",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "minimatch"
+      ],
+      "effects": [
+        "eslint"
+      ],
+      "range": "0.0.1 || >=0.1.1",
+      "nodes": [
+        "node_modules/@eslint/eslintrc"
+      ],
+      "fixAvailable": {
+        "name": "eslint",
+        "version": "4.0.0",
+        "isSemVerMajor": true
+      }
+    },
+    "eslint": {
+      "name": "eslint",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        "@eslint-community/eslint-utils",
+        "@eslint/config-array",
+        "@eslint/eslintrc",
+        "minimatch"
+      ],
+      "effects": [
+        "@eslint-community/eslint-utils"
+      ],
+      "range": "0.7.1 - 2.0.0-rc.1 || >=4.1.0",
+      "nodes": [
+        "node_modules/eslint"
+      ],
+      "fixAvailable": {
+        "name": "eslint",
+        "version": "4.0.0",
+        "isSemVerMajor": true
+      }
+    },
+    "glob": {
+      "name": "glob",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "minimatch"
+      ],
+      "effects": [
+        "rimraf"
+      ],
+      "range": "3.0.0 - 13.0.6",
+      "nodes": [
+        "node_modules/glob"
+      ],
+      "fixAvailable": false
+    },
+    "minecraft-protocol": {
+      "name": "minecraft-protocol",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        "prismarine-auth",
+        "yggdrasil"
+      ],
+      "effects": [
+        "mineflayer"
+      ],
+      "range": ">=0.16.0",
+      "nodes": [
+        "node_modules/minecraft-protocol"
+      ],
+      "fixAvailable": false
+    },
+    "mineflayer": {
+      "name": "mineflayer",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        "minecraft-protocol"
+      ],
+      "effects": [
+        "mineflayer-armor-manager",
+        "mineflayer-collectblock",
+        "mineflayer-pvp",
+        "mineflayer-tool",
+        "mineflayer-utils"
+      ],
+      "range": ">=1.5.0",
+      "nodes": [
+        "node_modules/mineflayer",
+        "node_modules/mineflayer-utils/node_modules/mineflayer"
+      ],
+      "fixAvailable": false
+    },
+    "mineflayer-armor-manager": {
+      "name": "mineflayer-armor-manager",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        "mineflayer"
+      ],
+      "effects": [],
+      "range": "1.0.0 - 1.4.1 || >=2.0.0",
+      "nodes": [
+        "node_modules/mineflayer-armor-manager"
+      ],
+      "fixAvailable": {
+        "name": "mineflayer-armor-manager",
+        "version": "1.4.2",
+        "isSemVerMajor": true
+      }
+    },
+    "mineflayer-collectblock": {
+      "name": "mineflayer-collectblock",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        "mineflayer",
+        "mineflayer-tool"
+      ],
+      "effects": [],
+      "range": "*",
+      "nodes": [
+        "node_modules/mineflayer-collectblock"
+      ],
+      "fixAvailable": false
+    },
+    "mineflayer-pvp": {
+      "name": "mineflayer-pvp",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        "mineflayer",
+        "mineflayer-utils"
+      ],
+      "effects": [],
+      "range": "*",
+      "nodes": [
+        "node_modules/mineflayer-pvp"
+      ],
+      "fixAvailable": false
+    },
+    "mineflayer-simplevoice": {
+      "name": "mineflayer-simplevoice",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        "@discordjs/opus"
+      ],
+      "effects": [],
+      "range": "*",
+      "nodes": [
+        "node_modules/mineflayer-simplevoice"
+      ],
+      "fixAvailable": false
+    },
+    "mineflayer-tool": {
+      "name": "mineflayer-tool",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "mineflayer"
+      ],
+      "effects": [
+        "mineflayer-collectblock"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/mineflayer-tool"
+      ],
+      "fixAvailable": false
+    },
+    "mineflayer-utils": {
+      "name": "mineflayer-utils",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "mineflayer"
+      ],
+      "effects": [],
+      "range": "*",
+      "nodes": [
+        "node_modules/mineflayer-utils"
+      ],
+      "fixAvailable": true
+    },
+    "minimatch": {
+      "name": "minimatch",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1244012,
+          "name": "minimatch",
+          "dependency": "minimatch",
+          "title": "minimatch has potential denial of service via globparts amplification",
+          "url": "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-405"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": "<11.0.1"
+        }
+      ],
+      "effects": [
+        "@eslint/config-array",
+        "@eslint/eslintrc",
+        "eslint",
+        "glob"
+      ],
+      "range": "<11.0.1",
+      "nodes": [
+        "node_modules/minimatch"
+      ],
+      "fixAvailable": false
+    },
+    "prismarine-auth": {
+      "name": "prismarine-auth",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "@azure/msal-node"
+      ],
+      "effects": [
+        "minecraft-protocol"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/prismarine-auth"
+      ],
+      "fixAvailable": false
+    },
+    "rimraf": {
+      "name": "rimraf",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "glob"
+      ],
+      "effects": [
+        "@discordjs/node-pre-gyp"
+      ],
+      "range": "2.3.0 - 3.0.2 || >=4.2.0",
+      "nodes": [
+        "node_modules/rimraf"
+      ],
+      "fixAvailable": false
+    },
+    "uuid": {
+      "name": "uuid",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1119441,
+          "name": "uuid",
+          "dependency": "uuid",
+          "title": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
+          "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-787",
+            "CWE-1285"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+          },
+          "range": "<11.1.1"
+        }
+      ],
+      "effects": [
+        "@azure/msal-node",
+        "yggdrasil"
+      ],
+      "range": "<11.1.1",
+      "nodes": [
+        "node_modules/uuid",
+        "node_modules/yggdrasil/node_modules/uuid"
+      ],
+      "fixAvailable": false
+    },
+    "yggdrasil": {
+      "name": "yggdrasil",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "uuid"
+      ],
+      "effects": [
+        "minecraft-protocol"
+      ],
+      "range": "*",
+      "nodes": [
+        "node_modules/yggdrasil"
+      ],
+      "fixAvailable": false
+    }
+  },
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 21,
+      "high": 0,
+      "critical": 0,
+      "total": 21
+    },
+    "dependencies": {
+      "prod": 402,
+      "dev": 0,
+      "optional": 10,
+      "peer": 0,
+      "peerOptional": 0,
+      "total": 411
+    }
+  }
+}
